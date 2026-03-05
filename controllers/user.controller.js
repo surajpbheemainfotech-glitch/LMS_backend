@@ -144,3 +144,42 @@ export const logout = (req, res) => {
     });
   }
 };
+
+export const getAllUser = async(req,res) =>{
+  try {
+
+    const [userRows] = await db.execute(`
+      SELECT 
+      id, first_name, last_name, mobile, email, password, role, 
+      created_at, updated_at
+       FROM users`
+      );
+
+      if(userRows.length == 0){
+        return res.status(400).json({
+          success: false,
+           message: "Users are not avaiable ."
+          });
+      }
+
+      const users = userRows;
+
+      return res.status(200).json({success: true, users: users})
+    
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+       message: "Internal server error !"
+      });
+  }
+}
+
+// export const getuserByCourseId = async(req,res) =>{
+//   try {
+
+//     const {course}
+    
+//   } catch (error) {
+//     return res.status(500).json({success: false, message: "Internal server error !"})
+//   }
+// }

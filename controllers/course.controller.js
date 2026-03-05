@@ -16,8 +16,8 @@ export const addCourse = async (req, res) => {
 
     const thumbnail = req.file ? req.file.filename : null;
 
-    if(!thumbnail){
-      return res.status(400).json({success: false, message: "Please select image"})
+    if (!thumbnail) {
+      return res.status(400).json({ success: false, message: "Please select image" })
     }
 
     if (!title || !description || !price || !category_id) {
@@ -126,9 +126,9 @@ export const updateCourse = async (req, res) => {
 
     console.log(req.body)
 
-  if(!title || !description || !short_description || !price  || !level || !language 
-    || !duration || !total_lectures || !category_id){
-     return res.status(402).json({success: false, message: "All fields are required"})
+    if (!title || !description || !short_description || !price || !level || !language
+      || !duration || !total_lectures || !category_id) {
+      return res.status(402).json({ success: false, message: "All fields are required" })
     }
     const [existing] = await db.execute(
       "SELECT id FROM courses WHERE id = ?",
@@ -216,3 +216,64 @@ export const deleteCourse = async (req, res) => {
     });
   }
 };
+
+export const getCoursesByCategoryId = async (req, res) => {
+
+  try {
+    const category_id = req.params.id;
+
+
+    if (!category_id) {
+      return res.status(400).json({ success: false, message: "Please select category" })
+    }
+
+    const [courseRows] = await db.execute(
+      `SELECT 
+    id,title,description,short_description,
+    price,thumbnail,level,language, duration,
+    total_lectures,category_id,is_published,created_at,updated_at
+    FROM courses
+    WHERE category_id = ?`,
+      [category_id]
+    );
+
+    if (courseRows.length == 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No courses are available for this category"
+      })
+    }
+
+    const courses = courseRows;
+
+    return res.status(200).json({ success: true, courses: courses })
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Internal server error !" })
+  }
+}
+
+export const getActiveCourses = async (req, res) => {
+  try {
+
+    const [courseRows] = await db.execute(
+      `SELECT 
+    id,title,description,short_description,
+    price,thumbnail,level,language, duration,
+    total_lectures,category_id,created_at,updated_at
+    FROM courses
+    WHERE is_published = ?
+  `, [1]
+    );
+
+    if (courseRows.length === 0) {
+      return res.status(404).json({ success: false, message: "No active course are avaiable ." })
+    }
+
+    const activeCourses = courseRows;
+    return res.status(200).json({ success: true, activeCourses: activeCourses })
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Internal server error !" })
+  }
+}
+

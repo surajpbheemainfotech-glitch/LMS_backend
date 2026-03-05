@@ -5,6 +5,13 @@ export const addCategory = async (req, res) => {
     try {
 
         const { name } = req.body;
+        const icon = req.file ? req.file.filename : null;
+
+        console.log("req-body",req.body, "req-file", req.file)
+
+        if(!icon){
+      return res.status(400).json({success: false, message: "Please select image"})
+    }
 
         if (!name) {
             return res.status(400).json({
@@ -25,8 +32,8 @@ export const addCategory = async (req, res) => {
             });
         }
         await db.execute(
-            "INSERT INTO categories ( name, created_by) VALUES (?, ?)",
-            [name, req.user.id]
+            "INSERT INTO categories ( name,icon, created_by) VALUES (?, ?, ?)",
+            [name,icon,req.user.id]
         );
 
         res.status(201).json({

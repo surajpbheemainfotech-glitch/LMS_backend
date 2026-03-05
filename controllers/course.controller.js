@@ -14,8 +14,11 @@ export const addCourse = async (req, res) => {
       category_id
     } = req.body;
 
-    // 🔥 Get thumbnail from multer (if file uploaded)
     const thumbnail = req.file ? req.file.filename : null;
+
+    if(!thumbnail){
+      return res.status(400).json({success: false, message: "Please select image"})
+    }
 
     if (!title || !description || !price || !category_id) {
       return res.status(400).json({
@@ -24,7 +27,6 @@ export const addCourse = async (req, res) => {
       });
     }
 
-    // Check category exists
     const [category] = await db.execute(
       "SELECT id FROM categories WHERE id = ?",
       [category_id]

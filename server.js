@@ -2,11 +2,15 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+
+import { connectDB } from "./config/db.js";
+
 import adminRouter from "./routes/admin.route.js";
 import userRouter from "./routes/user.route.js";
 import categoryRouter from "./routes/category.route.js";
 import courseRouter from "./routes/course.route.js";
-import { connectDB } from "./config/db.js";
+import materialRouter from "./routes/course_material.route.js";
+
 
 dotenv.config();
 
@@ -27,9 +31,9 @@ app.use("/api/admin", adminRouter);
 app.use("/api/user", userRouter);
 app.use("/api/category",categoryRouter)
 app.use("/api/course", courseRouter);
+app.use("/api/std_material",materialRouter)
 
 
-// Start Server
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {

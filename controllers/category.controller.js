@@ -1,58 +1,58 @@
 import db from "../config/db.js";
-
+import path from "path";
+import fs from "fs";
 
 export const addCategory = async (req, res) => {
-    try {
+  try {
 
-        const { name } = req.body;
-        const icon = req.file ? req.file.filename : null;
+    const { name } = req.body;
+    const icon = req.file ? req.file.filename : null;
+console.log("req-body", name, "req-file",icon, "adminid", req.user.id)
 
-        console.log("req-body",req.body, "req-file", req.file)
-
-        if(!icon){
-      return res.status(400).json({success: false, message: "Please select image"})
+    if (!icon) {
+      return res.status(400).json({ success: false, message: "Please select image" })
     }
 
-        if (!name) {
-            return res.status(400).json({
-                success: false,
-                message: "Category name is required",
-            });
-        }
-
-        const [existing] = await db.execute(
-            "SELECT id FROM categories WHERE name = ?",
-            [name]
-        );
-
-        if (existing.length > 0) {
-            return res.status(400).json({
-                success: false,
-                message: "Category already exists",
-            });
-        }
-        await db.execute(
-            "INSERT INTO categories ( name,icon, created_by) VALUES (?, ?, ?)",
-            [name,icon,req.user.id]
-        );
-
-        res.status(201).json({
-            success: true,
-            message: "Category added successfully",
-        });
-
-    } catch (error) {
-        console.error("Add Category Error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Server Error",
-        });
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "Category name is required",
+      });
     }
+
+    const [existing] = await db.execute(
+      "SELECT id FROM categories WHERE name = ?",
+      [name]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Category already exists",
+      });
+    }
+    await db.execute(
+      "INSERT INTO categories ( name,icon, created_by) VALUES (?, ?, ?)",
+      [name, icon, req.user.id]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Category added successfully",
+    });
+
+  } catch (error) {
+    console.error("Add Category Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
 };
 
 export const getCategories = async (req, res) => {
   try {
- 
+
 
     const [categories] = await db.execute(
       "SELECT * FROM categories ORDER BY created_at DESC"
@@ -74,7 +74,7 @@ export const getCategories = async (req, res) => {
 
 export const updateCategory = async (req, res) => {
   try {
-  
+
     const { id } = req.params;
     const { name } = req.body;
 
@@ -132,9 +132,9 @@ export const deleteCategory = async (req, res) => {
   try {
 
     const { id } = req.params;
-
+    console.log(id)
     const [existingCategory] = await db.execute(
-      "SELECT id FROM categories WHERE id = ?",
+      "SELECT icon FROM categories WHERE id = ?",
       [id]
     );
 
@@ -143,6 +143,25 @@ export const deleteCategory = async (req, res) => {
         success: false,
         message: "Category not found",
       });
+    }
+
+    const imagePath = existingCategory[0].icon;
+
+    console.log("DB icon value:", imagePath);
+
+    if (imagePath) {
+      const fileName = path.basename(imagePath);
+      const filePath = path.join(process.cwd(), "uploads", fileName);
+
+      console.log("Final file path:", filePath);
+      console.log("File exists:", fs.existsSync(filePath));
+
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log("File deleted successfully");
+      } else {
+        console.log("File not found in uploads folder");
+      }
     }
 
     await db.execute(

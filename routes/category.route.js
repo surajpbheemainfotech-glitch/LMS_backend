@@ -13,10 +13,10 @@ const categoryRouter = express.Router()
 
 //category route
 
-categoryRouter.post("/add", verifyToken,upload.single("icon"),addCategory)
+categoryRouter.post("/add",verifyToken, upload.single("icon"),addCategory)
 categoryRouter.get("/get", getCategories)
-categoryRouter.patch("/update/:id", verifyToken, updateCategory)
-categoryRouter.delete("/delete/:id", verifyToken, deleteCategory)
+categoryRouter.patch("/update/:id",verifyToken, updateCategory)
+categoryRouter.delete("/delete/:id",verifyToken, deleteCategory)
 
 
 export default categoryRouter

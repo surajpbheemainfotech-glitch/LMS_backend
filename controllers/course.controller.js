@@ -1,4 +1,6 @@
 import db from "../config/db.js";
+import path from "path";
+import fs from "fs";
 
 export const addCourse = async (req, res) => {
   try {
@@ -124,7 +126,6 @@ export const updateCourse = async (req, res) => {
       category_id
     } = req.body;
 
-    console.log(req.body)
 
     if (!title || !description || !short_description || !price || !level || !language
       || !duration || !total_lectures || !category_id) {
@@ -187,7 +188,7 @@ export const deleteCourse = async (req, res) => {
     const { id } = req.params;
 
     const [existing] = await db.execute(
-      "SELECT id FROM courses WHERE id = ?",
+      "SELECT thumbnail FROM courses WHERE id = ?",
       [id]
     );
 
@@ -196,6 +197,22 @@ export const deleteCourse = async (req, res) => {
         success: false,
         message: "Course not found",
       });
+    }
+
+    const imagePath = existing[0].thumbnail;
+
+    console.log("DB icon value:", imagePath);
+
+    if (imagePath) {
+      const fileName = path.basename(imagePath);
+      const filePath = path.join(process.cwd(), "uploads", fileName);
+
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log("File deleted successfully");
+      } else {
+        console.log("File not found in uploads folder");
+      }
     }
 
     await db.execute(
@@ -277,3 +294,61 @@ export const getActiveCourses = async (req, res) => {
   }
 }
 
+export const enrollCourse = async (req, res) => {
+  try {
+
+    const { user_id, course_id, amount } = req.body
+
+    if (!user_id) {
+      return res.status(400).json({ success: false, message: "Login to enroll course ." })
+    } else {
+      if (!course_id) {
+        return res.status(400).json({ success: false, message: "Please select course ." })
+      }
+      if (!amount) {
+        return res.status(400).json({ success: false, message: "Try agaun later ." })
+      }
+    }
+
+    await db.execute(`
+        INSERT INTO purchased_courses 
+        (user_id, course_id, purchased_at, amount, payment_status)
+         VALUES (?, ?, ?, ?, ?)`,
+      [user_id, course_id, new Date(), amount, "paid"]
+    );
+
+    return res.status(201).json({ success: true, message: "Enrolled Successfully ." })
+
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({ success: false, message: "Internal server error ." })
+  }
+}
+
+export const getCoursesByUserId = async (req, res) => {
+  try {
+    const userId  = req.params.id;
+
+    if (!userId) {
+      return res.status(402).json({ success: false, message: "Please login first . " })
+    }
+
+    const [courses] = await db.execute(
+      `SELECT c.*
+   FROM courses c
+   JOIN purchased_courses pc 
+   ON pc.course_id = c.id
+   WHERE pc.user_id = ?`,
+      [userId]
+    );
+
+    if (courses == 0) {
+      return res.status(400).json({ success: false, message: "NO course is enrolled by user ." })
+    }
+
+    return res.status(200).json({ success: true, courses: courses })
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Internal server error ." })
+  }
+}

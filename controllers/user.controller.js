@@ -46,10 +46,9 @@ export const signup = async (req, res) => {
 };
 
 export const login = async (req, res) => {
+
   try {
     let { email, password } = req.body;
-
-    email = (email || "").trim().toLowerCase();
 
     if (!email || !password) {
       return res.status(400).json({
@@ -173,13 +172,3 @@ export const getAllUser = async(req,res) =>{
       });
   }
 }
-
-// export const getuserByCourseId = async(req,res) =>{
-//   try {
-
-//     const {course}
-    
-//   } catch (error) {
-//     return res.status(500).json({success: false, message: "Internal server error !"})
-//   }
-// }

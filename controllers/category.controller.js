@@ -3,11 +3,16 @@ import path from "path";
 import fs from "fs";
 
 export const addCategory = async (req, res) => {
+  console.log("req.body raw:", req.body);
+console.log("req.body.name:", req.body.name);
+console.log("typeof req.body.name:", typeof req.body.name);
+console.log("req.file raw:", req.file);
+console.log("req.file.filename:", req.file?.filename);
+console.log("req.file.path:", req.file?.path);
   try {
 
     const { name } = req.body;
     const icon = req.file ? req.file.filename : null;
-console.log("req-body", name, "req-file",icon, "adminid", req.user.id)
 
     if (!icon) {
       return res.status(400).json({ success: false, message: "Please select image" })
@@ -152,10 +157,7 @@ export const deleteCategory = async (req, res) => {
     if (imagePath) {
       const fileName = path.basename(imagePath);
       const filePath = path.join(process.cwd(), "uploads", fileName);
-
-      console.log("Final file path:", filePath);
-      console.log("File exists:", fs.existsSync(filePath));
-
+      
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
         console.log("File deleted successfully");

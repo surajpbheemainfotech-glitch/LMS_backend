@@ -2,66 +2,74 @@ import db from "../config/db.js";
 
 export const addCourseMaterial = async (req, res) => {
   try {
-
-    const { title, material_type, link, course_title } = req.body
-    
-    const file_url = req.file ? req.file.filename : null;
-
+  
+    const { title, material_type, link, course_title } = req.body;
+    console.log("material_type",material_type)
+    const file_url = req.file ? req.file.path || req.file.secure_url : null;
 
     if (!title || !material_type || !course_title) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required ."
-      })
+        message: "All fields are required.",
+      });
     }
 
-    if (material_type == "pdf") {
+    if (material_type === "pdf") {
       if (!file_url) {
-        return res.status(400).json({ success: false, message: "Please select file ." })
+        return res.status(400).json({
+          success: false,
+          message: "Please select a PDF file.",
+        });
       }
     } else {
       if (!link) {
-        return res.status(400).json({ success: false, message: "Please enter Youtube link ." })
+        return res.status(400).json({
+          success: false,
+          message: "Please enter YouTube link.",
+        });
       }
     }
 
-
-    const [rows] = await db.execute(`
-        SELECT id FROM courses WHERE title = ? `
-      , [course_title]
+    const [rows] = await db.execute(
+      `SELECT id FROM courses WHERE title = ?`,
+      [course_title]
     );
 
-    if (rows.length == 0) {
+    if (rows.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Title is not related to any course ."
+        message: "Title is not related to any course.",
       });
     }
 
     const courseId = rows[0].id;
 
-    await db.execute(`
-        INSERT INTO course_materials 
-        (course_id, title, material_type, file_url,youtube_url)
-         VALUES (?, ?, ?, ?, ?) `,
+    await db.execute(
+      `INSERT INTO course_materials
+      (course_id, title, material_type, file_url, youtube_url)
+      VALUES (?, ?, ?, ?, ?)`,
       [
         courseId,
         title,
         material_type,
         material_type === "pdf" ? file_url : null,
-        material_type !== "pdf" ? link : null
-      ]);
+        material_type !== "pdf" ? link : null,
+      ]
+    );
 
     return res.status(201).json({
       success: true,
-      message: `Material successfully for ${course_title}`
-    })
-
+      message: `Material added successfully for ${course_title}`,
+      file_url: material_type === "pdf" ? file_url : null,
+    });
   } catch (error) {
-    console.log(error)
-    return res.status(500).json({ success: false, message: "Internal server error ." })
+    console.error("addCourseMaterial error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error.",
+    });
   }
-}
+};
 
 export const getCourseMaterialBy = async (req, res) => {
   try {

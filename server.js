@@ -11,7 +11,6 @@ import categoryRouter from "./routes/category.route.js";
 import courseRouter from "./routes/course.route.js";
 import materialRouter from "./routes/course_material.route.js";
 
-
 dotenv.config();
 
 const app = express();
@@ -35,7 +34,6 @@ app.use("/api/std_material",materialRouter)
 
 
 const PORT = process.env.PORT || 5000;
-
 const startServer = async () => {
   await connectDB()
   app.listen(PORT, () => {

@@ -1,28 +1,28 @@
 import db from "../config/db.js";
-import path from "path";
-import fs from "fs";
+import cloudinary from "../config/cloudinaryConfig.js";
 
 export const addCourse = async (req, res) => {
   try {
     const {
-      title,
-      description,
-      short_description,
-      price,
-      level,
-      language,
-      duration,
-      total_lectures,
-      category_id
+      title, description, short_description, price,
+      level, language, duration, total_lectures, category_id,
     } = req.body;
 
-    const thumbnail = req.file ? req.file.filename : null;
+    const thumbnail = req.file?.path || null;
+    const thumbnail_public_id = req.file?.filename || null;
 
     if (!thumbnail) {
-      return res.status(400).json({ success: false, message: "Please select image" })
+      return res.status(400).json({
+        success: false,
+        message: "Please select image",
+      });
     }
 
     if (!title || !description || !price || !category_id) {
+      if (thumbnail_public_id) {
+        await cloudinary.uploader.destroy(thumbnail_public_id);
+      }
+
       return res.status(400).json({
         success: false,
         message: "Required fields missing",
@@ -30,11 +30,15 @@ export const addCourse = async (req, res) => {
     }
 
     const [category] = await db.execute(
-      "SELECT id FROM categories WHERE id = ?",
+      "SELECT id FROM categories WHERE id = ? LIMIT 1",
       [category_id]
     );
 
     if (category.length === 0) {
+      if (thumbnail_public_id) {
+        await cloudinary.uploader.destroy(thumbnail_public_id);
+      }
+
       return res.status(404).json({
         success: false,
         message: "Category not found",
@@ -43,33 +47,38 @@ export const addCourse = async (req, res) => {
 
     await db.execute(
       `INSERT INTO courses 
-      (title, description, short_description, price, thumbnail, level, language, duration, total_lectures, category_id, created_by) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (title, description, short_description, price, thumbnail, thumbnail_public_id,
+       level, language, duration, total_lectures, category_id, created_by) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        title,
-        description,
-        short_description,
-        price,
-        thumbnail,
-        level || "Beginner",
-        language || "English",
-        duration,
-        total_lectures || 0,
-        category_id,
-        req.user.id
+        title, description, short_description || null, price, thumbnail,
+        thumbnail_public_id, level || "Beginner", language || "English", duration || null,
+        total_lectures || 0, category_id, req.user.id,
       ]
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Course added successfully",
+      data: {
+        title,
+        thumbnail,
+        thumbnail_public_id,
+      },
     });
-
   } catch (error) {
+    if (req.file?.filename) {
+      try {
+        await cloudinary.uploader.destroy(req.file.filename);
+      } catch (destroyError) {
+        console.error("Cloudinary cleanup error:", destroyError.message);
+      }
+    }
+
     console.error("Add Course Error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Server Error",
+      message: error?.message || "Server Error",
     });
   }
 };
@@ -115,24 +124,21 @@ export const updateCourse = async (req, res) => {
     const { id } = req.params;
 
     const {
-      title,
-      description,
-      short_description,
-      price,
-      level,
-      language,
-      duration,
-      total_lectures,
-      category_id
+      title, description, short_description, price, level,
+      language, duration, total_lectures, category_id,
     } = req.body;
 
-
-    if (!title || !description || !short_description || !price || !level || !language
-      || !duration || !total_lectures || !category_id) {
-      return res.status(402).json({ success: false, message: "All fields are required" })
+    if (
+      !title || !description || !short_description || !price || !level || !language ||
+      !duration || !total_lectures || !category_id) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
     }
+
     const [existing] = await db.execute(
-      "SELECT id FROM courses WHERE id = ?",
+      "SELECT id FROM courses WHERE id = ? LIMIT 1",
       [id]
     );
 
@@ -143,42 +149,38 @@ export const updateCourse = async (req, res) => {
       });
     }
 
+    const [category] = await db.execute(
+      "SELECT id FROM categories WHERE id = ? LIMIT 1",
+      [category_id]
+    );
+
+    if (category.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
     await db.execute(
       `UPDATE courses SET
-        title = ?,
-        description = ?,
-        short_description = ?,
-        price = ?,
-        level = ?,
-        language = ?,
-        duration = ?,
-        total_lectures = ?,
-        category_id = ?
+        title = ?,description = ?,short_description = ?, price = ?, 
+        level = ?, language = ?, duration = ?, total_lectures = ?, category_id = ?
       WHERE id = ?`,
       [
-        title,
-        description,
-        short_description,
-        price,
-        level,
-        language,
-        duration,
-        total_lectures,
-        category_id,
-        id
+        title, description, short_description, price, level,
+        language, duration, total_lectures, category_id, id,
       ]
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Course updated successfully",
     });
-
   } catch (error) {
     console.error("Update Course Error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Server Error",
+      message: error?.message || "Server Error",
     });
   }
 };
@@ -188,7 +190,7 @@ export const deleteCourse = async (req, res) => {
     const { id } = req.params;
 
     const [existing] = await db.execute(
-      "SELECT thumbnail FROM courses WHERE id = ?",
+      "SELECT thumbnail_public_id FROM courses WHERE id = ? LIMIT 1",
       [id]
     );
 
@@ -199,37 +201,24 @@ export const deleteCourse = async (req, res) => {
       });
     }
 
-    const imagePath = existing[0].thumbnail;
+    const thumbnailPublicId = existing[0].thumbnail_public_id;
 
-    console.log("DB icon value:", imagePath);
-
-    if (imagePath) {
-      const fileName = path.basename(imagePath);
-      const filePath = path.join(process.cwd(), "uploads", fileName);
-
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        console.log("File deleted successfully");
-      } else {
-        console.log("File not found in uploads folder");
-      }
+    if (thumbnailPublicId) {
+      const cloudinaryResult = await cloudinary.uploader.destroy(thumbnailPublicId);
+      console.log("Cloudinary delete result:", cloudinaryResult);
     }
 
-    await db.execute(
-      "DELETE FROM courses WHERE id = ?",
-      [id]
-    );
+    await db.execute("DELETE FROM courses WHERE id = ?", [id]);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Course deleted successfully",
     });
-
   } catch (error) {
     console.error("Delete Course Error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Server Error",
+      message: error?.message || "Server Error",
     });
   }
 };
@@ -327,7 +316,7 @@ export const enrollCourse = async (req, res) => {
 
 export const getCoursesByUserId = async (req, res) => {
   try {
-    const userId  = req.params.id;
+    const userId = req.params.id;
 
     if (!userId) {
       return res.status(402).json({ success: false, message: "Please login first . " })

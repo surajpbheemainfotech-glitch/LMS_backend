@@ -341,3 +341,52 @@ export const getCoursesByUserId = async (req, res) => {
     return res.status(500).json({ success: false, message: "Internal server error ." })
   }
 }
+
+export const getCourseById = async (req, res) => {
+  try {
+    const { id } = req.params
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Selected course are not available ." })
+    }
+
+    const [course] = await db.execute(
+` SELECT 
+    c.id, c.title, c.description, c.short_description,
+    c.price, c.thumbnail, c.level, c.language, c.duration, c.total_lectures,
+    cat.name AS category_name,
+    GROUP_CONCAT(cm.title) AS material_titles
+
+  FROM courses c
+
+  JOIN categories cat 
+   ON c.category_id = cat.id
+
+  LEFT JOIN course_materials cm
+   ON cm.course_id = c.id
+
+  WHERE c.id = ?
+
+  GROUP BY c.id
+`,
+[id]
+);
+
+    if (course.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found"
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: course[0]
+    });
+
+
+  } catch (error) {
+    console.log("error ", error)
+    return res.status(500).json({ success: false, message: "Internal server error ." })
+  }
+}

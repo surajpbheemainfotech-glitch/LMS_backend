@@ -30,7 +30,7 @@ export const createPdfUpload = (folderName, namePrefix) => {
 
       return {
         folder: folderName,
-        resource_type: "raw",
+        resource_type: "image",
         public_id: `${namePrefix}-${Date.now()}-${baseName}`,
         format: "pdf",
       };

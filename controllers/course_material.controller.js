@@ -4,8 +4,8 @@ export const addCourseMaterial = async (req, res) => {
   try {
   
     const { title, material_type, link, course_title } = req.body;
-    console.log("material_type",material_type)
-    const file_url = req.file ? req.file.path || req.file.secure_url : null;
+    const file_url = req.file || null;
+     const url_public_id = req.file?.filename || null;
 
     if (!title || !material_type || !course_title) {
       return res.status(400).json({
@@ -46,14 +46,15 @@ export const addCourseMaterial = async (req, res) => {
 
     await db.execute(
       `INSERT INTO course_materials
-      (course_id, title, material_type, file_url, youtube_url)
-      VALUES (?, ?, ?, ?, ?)`,
+      (course_id, title, material_type, file_url, youtube_url, url_public_id)
+      VALUES (?, ?, ?, ?, ?, ?)`,
       [
         courseId,
         title,
         material_type,
         material_type === "pdf" ? file_url : null,
         material_type !== "pdf" ? link : null,
+        url_public_id
       ]
     );
 
@@ -199,7 +200,7 @@ export const deleteCourseById = async (req, res) => {
     }
 
     const [existingMaterial] = await db.execute(`
-        SELECT file_url 
+        SELECT file_url , url_public_id
         from course_materials 
         WHERE id = ?`, [id]
     );
@@ -207,19 +208,13 @@ export const deleteCourseById = async (req, res) => {
     if (existingMaterial === 0) {
       return res.status(400).json({ success: false, message: "Selected course is not avaiable ." })
     }
-    const imagePath = rows[0].file_url;
-    
-        if (imagePath) {
-          const fileName = path.basename(imagePath);
-          const filePath = path.join(process.cwd(), "uploads", fileName);
- 
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-            console.log("File deleted successfully");
-          } else {
-            console.log("File not found in uploads folder");
-          }
-        }
+
+    const urlPublicId = existingMaterial[0].url_public_id
+   if (urlPublicId) {
+         const cloudinaryResult = await cloudinary.uploader.destroy(urlPublicId);
+         console.log("Cloudinary delete result:", cloudinaryResult);
+       }
+
 
     await db.execute(`DELETE FROM course_materials WHERE id = ?`, [id])
     return res.status(400).json({ success: true, message: "Material removed successfully ." })

@@ -9,7 +9,8 @@ import {
     getCoursesByCategoryId,
     getActiveCourses,
     enrollCourse,
-    getCoursesByUserId
+    getCoursesByUserId,
+    getCourseById
 } from "../controllers/course.controller.js"
 import { createImageUpload } from "../middleware/cloud.upload/image.upload.js"
 
@@ -25,6 +26,7 @@ courseRouter.delete("/delete/:id", verifyToken, deleteCourse)
 
 
 courseRouter.get("/get",getCourses)
+courseRouter.get("/get/:id",getCourseById)
 courseRouter.get("/courses/:id",verifyToken, getCoursesByCategoryId)
 courseRouter.get("/active-courses",verifyToken, getActiveCourses)
 courseRouter.get("/mycourses/:id",verifyToken, getCoursesByUserId)

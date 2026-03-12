@@ -3,7 +3,7 @@ import cloudinary from "../config/cloudinaryConfig.js";
 
 export const addCategory = async (req, res) => {
   try {
-    const {name} = req.body;
+    const { name } = req.body;
 
     if (!name) {
       if (req.file?.filename) {
@@ -75,9 +75,18 @@ export const getCategories = async (req, res) => {
   try {
 
 
-    const [categories] = await db.execute(
-      "SELECT * FROM categories ORDER BY created_at DESC"
-    );
+    const [categories] = await db.execute(`
+     SELECT 
+      categories.*, 
+      COUNT(courses.id) AS course_count
+     FROM categories
+     LEFT JOIN courses 
+      ON courses.category_id = categories.id
+    GROUP BY categories.id
+    ORDER BY categories.created_at DESC
+`);
+
+
 
     res.status(200).json({
       success: true,
@@ -96,7 +105,7 @@ export const getCategories = async (req, res) => {
 export const updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const {name} = req.body;
+    const { name } = req.body;
 
     if (!name) {
       return res.status(400).json({

@@ -27,7 +27,7 @@ courseRouter.delete("/delete/:id", verifyToken, deleteCourse)
 
 courseRouter.get("/get",getCourses)
 courseRouter.get("/get/:id",getCourseById)
-courseRouter.get("/courses/:id",verifyToken, getCoursesByCategoryId)
+courseRouter.get("/courses/:id", getCoursesByCategoryId)
 courseRouter.get("/active-courses",verifyToken, getActiveCourses)
 courseRouter.get("/mycourses/:id",verifyToken, getCoursesByUserId)
 

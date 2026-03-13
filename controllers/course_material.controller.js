@@ -2,10 +2,10 @@ import db from "../config/db.js";
 
 export const addCourseMaterial = async (req, res) => {
   try {
-  
+
     const { title, material_type, link, course_title } = req.body;
     const file_url = req.file || null;
-     const url_public_id = req.file?.filename || null;
+    const url_public_id = req.file?.filename || null;
 
     if (!title || !material_type || !course_title) {
       return res.status(400).json({
@@ -72,7 +72,7 @@ export const addCourseMaterial = async (req, res) => {
   }
 };
 
-export const getCourseMaterialBy = async (req, res) => {
+export const getCourseMaterialByCourseId = async (req, res) => {
   try {
     const courseId = req.params.id
 
@@ -210,10 +210,10 @@ export const deleteCourseById = async (req, res) => {
     }
 
     const urlPublicId = existingMaterial[0].url_public_id
-   if (urlPublicId) {
-         const cloudinaryResult = await cloudinary.uploader.destroy(urlPublicId);
-         console.log("Cloudinary delete result:", cloudinaryResult);
-       }
+    if (urlPublicId) {
+      const cloudinaryResult = await cloudinary.uploader.destroy(urlPublicId);
+      console.log("Cloudinary delete result:", cloudinaryResult);
+    }
 
 
     await db.execute(`DELETE FROM course_materials WHERE id = ?`, [id])
@@ -223,3 +223,4 @@ export const deleteCourseById = async (req, res) => {
     return res.status(500).json({ success: false, message: "Internal server error ." })
   }
 }
+

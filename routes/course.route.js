@@ -10,7 +10,8 @@ import {
     getActiveCourses,
     enrollCourse,
     getCoursesByUserId,
-    getCourseById
+    getCourseById,
+    updateCourseProgress
 } from "../controllers/course.controller.js"
 import { createImageUpload } from "../middleware/cloud.upload/image.upload.js"
 
@@ -22,6 +23,7 @@ courseRouter.post("/add", verifyToken,courseUpload.single("thumbnail"), addCours
 courseRouter.post("/enroll",enrollCourse)
 
 courseRouter.patch("/update/:id", verifyToken, updateCourse)
+courseRouter.patch("/update-course-progress/:id", verifyToken, updateCourseProgress)
 courseRouter.delete("/delete/:id", verifyToken, deleteCourse)
 
 

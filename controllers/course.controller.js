@@ -45,7 +45,7 @@ export const addCourse = async (req, res) => {
       });
     }
 
-    await db.execute(
+    const [courseRow] = await db.execute(
       `INSERT INTO courses 
       (title, description, short_description, price, thumbnail, thumbnail_public_id,
        level, language, duration, total_lectures, category_id, created_by) 
@@ -55,6 +55,13 @@ export const addCourse = async (req, res) => {
         thumbnail_public_id, level || "Beginner", language || "English", duration || null,
         total_lectures || 0, category_id, req.user.id,
       ]
+    );
+
+    await db.execute(
+      `INSERT INTO course_progress 
+      (user_id, course_id, total_lessons, progress_percent, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [req.user.id, courseRow.insertId, total_lectures, 0, "Started"]
     );
 
     return res.status(201).json({
@@ -351,7 +358,7 @@ export const getCourseById = async (req, res) => {
     }
 
     const [course] = await db.execute(
-` SELECT 
+      ` SELECT 
     c.id, c.title, c.description, c.short_description,
     c.price, c.thumbnail, c.level, c.language, c.duration, c.total_lectures,
     cat.name AS category_name,
@@ -369,8 +376,8 @@ export const getCourseById = async (req, res) => {
 
   GROUP BY c.id
 `,
-[id]
-);
+      [id]
+    );
 
     if (course.length === 0) {
       return res.status(404).json({
@@ -388,5 +395,67 @@ export const getCourseById = async (req, res) => {
   } catch (error) {
     console.log("error ", error)
     return res.status(500).json({ success: false, message: "Internal server error ." })
+  }
+}
+
+export const updateCourseProgress = async (req, res) => {
+  try {
+
+    const { completedLessons } = req.body;
+    const { courseId } = req.params;
+    const userId = req.user.id;
+
+    if (!completedLessons) {
+      if (!courseId) {
+        return res.status(402).json({
+          success: false,
+          message: "Please select course ."
+        })
+      };
+
+      return res.status(402).json({
+        success: false,
+        message: "Please send ids"
+      })
+    }
+
+
+    const [course] = await db.execute(
+      "SELECT total_lectures FROM courses WHERE id = ?",
+      [courseId]
+    );
+
+    const totalLessons = course[0].total_lectures;
+    const completedCount = completedLessons.length;
+    const remainingLessons = totalLessons - completedCount;
+    const progressPercent = ((completedCount / totalLessons) * 100).toFixed(2);
+
+    await db.execute(
+      `UPDATE course_progress 
+     SET completed_lessons = ?, 
+       remaining_lessons = ?, 
+       progress_percent = ?, 
+       status = ?
+     WHERE user_id = ? AND course_id = ?`,
+      [
+        JSON.stringify(completedLessons),
+        remainingLessons,
+        progressPercent,
+        progressPercent == 100 ? "Completed" : "In Progress",
+        userId,
+        courseId
+      ]
+    );
+
+    return res.status(302).json({
+      success: true,
+      message: "Progress saved ."
+    })
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error ."
+    })
   }
 }

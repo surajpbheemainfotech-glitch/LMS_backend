@@ -3,17 +3,16 @@ import jwt from "jsonwebtoken";
 export const verifyToken = (req, res, next) => {
   let token = null;
 
-  // 1️⃣ Check User Cookie
+
   if (req.cookies?.userToken) {
     token = req.cookies.userToken;
   }
 
-  // 2️⃣ Check Admin Cookie
+
   if (!token && req.cookies?.adminToken) {
     token = req.cookies.adminToken;
   }
 
-  // 3️⃣ Check Authorization Header
   if (!token && req.headers.authorization) {
     const authHeader = req.headers.authorization;
 
@@ -22,10 +21,9 @@ export const verifyToken = (req, res, next) => {
     }
   }
 
-  // 4️⃣ If no token
   if (!token) {
 
-  console.log("❌ Token not found in request headers");
+  console.log("Token not found in request headers");
   console.log("Request Headers:", req.headers);
 
   return res.status(401).json({
@@ -36,7 +34,7 @@ export const verifyToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // { id, email, role }
+    req.user = decoded;
     next();
   } catch (error) {
    

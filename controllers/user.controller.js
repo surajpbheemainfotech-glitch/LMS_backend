@@ -1,10 +1,11 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import db from "../config/db.js"; 
+import db from "../config/db.js";
+import cloudinary from "../config/cloudinaryConfig.js";
 
 export const signup = async (req, res) => {
   try {
-    const  { first_name, last_name, mobile, email, password } = req.body;
+    const { first_name, last_name, mobile, email, password } = req.body;
 
     if (!first_name || !last_name || !mobile || !email || !password) {
       return res.status(400).json({
@@ -96,15 +97,15 @@ export const login = async (req, res) => {
 
     res.cookie("userToken", token, {
       httpOnly: true,
-      secure: isProd, 
-      sameSite: isProd ? "None" : "Strict", 
+      secure: isProd,
+      sameSite: isProd ? "None" : "Strict",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
     return res.status(200).json({
       success: true,
       message: "Login Successful",
-      token, 
+      token,
       user: {
         id: user.id,
         first_name: user.first_name,
@@ -144,7 +145,7 @@ export const logout = (req, res) => {
   }
 };
 
-export const getAllUser = async(req,res) =>{
+export const getAllUser = async (req, res) => {
   try {
 
     const [userRows] = await db.execute(`
@@ -152,23 +153,124 @@ export const getAllUser = async(req,res) =>{
       id, first_name, last_name, mobile, email, password, role, 
       created_at, updated_at
        FROM users`
-      );
+    );
 
-      if(userRows.length == 0){
-        return res.status(400).json({
-          success: false,
-           message: "Users are not avaiable ."
-          });
-      }
+    if (userRows.length == 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Users are not avaiable ."
+      });
+    }
 
-      const users = userRows;
+    const users = userRows;
 
-      return res.status(200).json({success: true, users: users})
-    
+    return res.status(200).json({ success: true, users: users })
+
   } catch (error) {
     return res.status(500).json({
       success: false,
-       message: "Internal server error !"
-      });
+      message: "Internal server error !"
+    });
+  }
+}
+
+export const updateUserProfileById = async (req, res) => {
+  try {
+    const userId = req.params.id
+    const { first_name, last_name, mobile, domain } = req.body
+    const pdf_path = req.file?.path || null;
+    const pdf_url = req.file?.filename || null;
+
+    // if (!domain) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Please select domain ."
+    //   })
+    // } else {
+    //   if (!pdf_url || !pdf_path) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "Please select resume ."
+    //     })
+    //   }
+    // }
+
+    // if (!domain) {
+    //   if (pdf_url) {
+    //     await cloudinary.uploader.destroy(pdf_url);
+    //   }
+
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Required fields missing",
+    //   });
+    // }
+
+    // const [user] = await db.execute(
+    //   "SELECT id FROM users WHERE id = ? LIMIT 1",
+    //   [userId]
+    // );
+
+    // if (user.length === 0) {
+    //   if (pdf_url) {
+    //     await cloudinary.uploader.destroy(pdf_url);
+    //   }
+
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: "user not found",
+    //   });
+    // }
+
+    await db.execute(
+      `UPDATE users SET domain = ?, pdf_url = ?`,
+      [domain, pdf_url]
+    );
+
+    return res.status(302).json({ success: true, message: "Updated successfully ." })
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error ."
+    })
+  }
+}
+
+export const getUserById  = async(req,res) =>{
+  try {
+
+    const {id}  = req.params
+
+     if(!id){
+      return res.status(404).json({
+        success: false, 
+        message: "Login please ."
+      })
+     }
+
+  const [user] = await db.execute(
+    `SELECT first_name, last_name, mobile, email FROM users
+     WHERE id = ?`,
+     [id]
+    );
+
+    if(user.length == 0){
+       return res.status(404).json({
+        success: false, 
+        message: "Login please ."
+      })
+    }
+
+    return res.status(200).json({
+      success: true, 
+      user: user
+    })
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+       message: "Internal server error ."
+      })
   }
 }

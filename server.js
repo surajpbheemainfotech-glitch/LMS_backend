@@ -36,6 +36,7 @@ app.use("/api/category",categoryRouter)
 app.use("/api/course", courseRouter);
 app.use("/api/std_material",materialRouter)
 
+console.log("Happy Happy happyyy...")
 
 const PORT = process.env.PORT || 5000;
 const startServer = async () => {

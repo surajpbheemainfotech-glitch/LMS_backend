@@ -5,7 +5,6 @@ import {
     login,
     logout,
     signup,
-    updateBasicUserProfileById,
     updateUserProfileById
 } from '../controllers/user.controller.js'
 import {
@@ -23,7 +22,6 @@ userRouter.post("/login", loginValidation, login)
 userRouter.post("/signup", signupValidation, signup)
 userRouter.post("/logout", logout)
 
-userRouter.patch("/basic/update-profile/:id", verifyToken, updateBasicUserProfileById )
 userRouter.patch("/update-profile/:id", verifyToken,uploadPdf.single("pdf"), updateUserProfileById)
 
 userRouter.get("/all-users", getAllUser)

@@ -11,7 +11,8 @@ import {
     enrollCourse,
     getCoursesByUserId,
     getCourseById,
-    updateCourseProgress
+    updateCourseProgress,
+    getCourseProgressByCourseId
 } from "../controllers/course.controller.js"
 import { createImageUpload } from "../middleware/cloud.upload/image.upload.js"
 
@@ -32,5 +33,6 @@ courseRouter.get("/get/:id",getCourseById)
 courseRouter.get("/courses/:id", getCoursesByCategoryId)
 courseRouter.get("/active-courses",verifyToken, getActiveCourses)
 courseRouter.get("/mycourses/:id",verifyToken, getCoursesByUserId)
+courseRouter.get("/check-course-progress/:id", verifyToken, getCourseProgressByCourseId)
 
 export default courseRouter

@@ -45,7 +45,7 @@ export const addCourse = async (req, res) => {
       });
     }
 
-    const [courseRow] = await db.execute(
+    await db.execute(
       `INSERT INTO courses 
       (title, description, short_description, price, thumbnail, thumbnail_public_id,
        level, language, duration, total_lectures, category_id, created_by) 
@@ -55,13 +55,6 @@ export const addCourse = async (req, res) => {
         thumbnail_public_id, level || "Beginner", language || "English", duration || null,
         total_lectures || 0, category_id, req.user.id,
       ]
-    );
-
-    await db.execute(
-      `INSERT INTO course_progress 
-      (user_id, course_id, total_lessons, progress_percent, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [req.user.id, courseRow.insertId, total_lectures, 0, "Started"]
     );
 
     return res.status(201).json({
@@ -292,34 +285,65 @@ export const getActiveCourses = async (req, res) => {
 
 export const enrollCourse = async (req, res) => {
   try {
-
-    const { user_id, course_id, amount } = req.body
+    const { user_id, course_id, amount } = req.body;
 
     if (!user_id) {
-      return res.status(400).json({ success: false, message: "Login to enroll course ." })
-    } else {
-      if (!course_id) {
-        return res.status(400).json({ success: false, message: "Please select course ." })
-      }
-      if (!amount) {
-        return res.status(400).json({ success: false, message: "Try agaun later ." })
-      }
+      return res.status(400).json({ success: false, message: "Login to enroll course." });
     }
 
-    await db.execute(`
-        INSERT INTO purchased_courses 
-        (user_id, course_id, purchased_at, amount, payment_status)
-         VALUES (?, ?, ?, ?, ?)`,
+    if (!course_id) {
+      return res.status(400).json({ success: false, message: "Please select course." });
+    }
+
+    if (!amount) {
+      return res.status(400).json({ success: false, message: "Try again later." });
+    }
+
+    const [courseLectures] = await db.execute(
+      `SELECT total_lectures FROM courses WHERE id = ?`,
+      [course_id]
+    );
+
+    if (courseLectures.length === 0) {
+      return res.status(404).json({ success: false, message: "Course not found." });
+    }
+
+    const [purchaseResult] = await db.execute(
+      `INSERT INTO purchased_courses 
+       (user_id, course_id, purchased_at, amount, payment_status)
+       VALUES (?, ?, ?, ?, ?)`,
       [user_id, course_id, new Date(), amount, "paid"]
     );
 
-    return res.status(201).json({ success: true, message: "Enrolled Successfully ." })
+    const purchaseId = purchaseResult.insertId;
+
+    await db.execute(
+      `INSERT INTO course_progress 
+       (purchase_id, user_id, course_id, total_lessons, progress_percent, status)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        purchaseId,
+        user_id,
+        course_id,
+        courseLectures[0].total_lectures,
+        0,
+        "Started"
+      ]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Enrolled Successfully."
+    });
 
   } catch (error) {
-    console.log(error)
-    return res.status(500).json({ success: false, message: "Internal server error ." })
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error."
+    });
   }
-}
+};
 
 export const getCoursesByUserId = async (req, res) => {
   try {
@@ -399,34 +423,36 @@ export const getCourseById = async (req, res) => {
 }
 
 export const updateCourseProgress = async (req, res) => {
+  console.log(req.body)
+  console.log(req.params.id)
   try {
 
-    const { completedLessons } = req.body;
-    const { courseId } = req.params;
+    const { completed_lessons_ids } = req.body;
+    const course_id = req.params.id;
     const userId = req.user.id;
 
-    if (!completedLessons) {
-      if (!courseId) {
-        return res.status(402).json({
-          success: false,
-          message: "Please select course ."
-        })
-      };
-
-      return res.status(402).json({
+    if (!course_id) {
+      return res.status(400).json({
         success: false,
-        message: "Please send ids"
-      })
+        message: "Please select course."
+      });
     }
+
+    // if (completed_lessons_ids.length == 0) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Please send ids."
+    //   });
+    // }
 
 
     const [course] = await db.execute(
       "SELECT total_lectures FROM courses WHERE id = ?",
-      [courseId]
+      [course_id]
     );
 
     const totalLessons = course[0].total_lectures;
-    const completedCount = completedLessons.length;
+    const completedCount = completed_lessons_ids.length;
     const remainingLessons = totalLessons - completedCount;
     const progressPercent = ((completedCount / totalLessons) * 100).toFixed(2);
 
@@ -438,12 +464,12 @@ export const updateCourseProgress = async (req, res) => {
        status = ?
      WHERE user_id = ? AND course_id = ?`,
       [
-        JSON.stringify(completedLessons),
+        JSON.stringify(completed_lessons_ids),
         remainingLessons,
         progressPercent,
         progressPercent == 100 ? "Completed" : "In Progress",
         userId,
-        courseId
+        course_id
       ]
     );
 
@@ -452,6 +478,45 @@ export const updateCourseProgress = async (req, res) => {
       message: "Progress saved ."
     })
 
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error ."
+    })
+  }
+}
+
+export const getCourseProgressByCourseId = async (req, res) => {
+  try {
+    const courseId = req.params.id
+
+    if (!courseId) {
+      return res.status(400).json({
+        success: false,
+        message: "This course is not available ."
+      })
+    };
+
+    const [courseProgress] = await db.execute(
+      `SELECT 
+          completed_lessons,remaining_lessons, progress_percent, status 
+          FROM course_progress 
+          WHERE course_id = ?`,
+      [courseId]
+    );
+
+    if (courseProgress.length == 0) {
+      return res.status(404).json({
+        success: false,
+        message: "This course is not available ."
+      })
+    };
+
+    return res.status(200).json({
+      success: true,
+      progress: courseProgress
+    })
   } catch (error) {
     return res.status(500).json({
       success: false,

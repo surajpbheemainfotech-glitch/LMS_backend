@@ -81,7 +81,7 @@ export const getCourseMaterialByCourseId = async (req, res) => {
     }
 
     const [materialRows] = await db.execute(`
-            SELECT title, material_type, file_url, youtube_url, created_at 
+            SELECT id,title, material_type, file_url, youtube_url, created_at 
             FROM course_materials 
             WHERE course_id = ?`,
       [courseId]

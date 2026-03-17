@@ -176,66 +176,72 @@ export const getAllUser = async (req, res) => {
 
 export const updateUserProfileById = async (req, res) => {
   try {
-    const userId = req.params.id
-    const { first_name, last_name, mobile, domain } = req.body
+    const userId = req.params.id;
+    const { first_name, last_name, mobile, domain } = req.body;
+
     const pdf_path = req.file?.path || null;
     const pdf_url = req.file?.filename || null;
 
-    // if (!domain) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Please select domain ."
-    //   })
-    // } else {
-    //   if (!pdf_url || !pdf_path) {
-    //     return res.status(400).json({
-    //       success: false,
-    //       message: "Please select resume ."
-    //     })
-    //   }
-    // }
+    if (!domain) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select domain.",
+      });
+    }
 
-    // if (!domain) {
-    //   if (pdf_url) {
-    //     await cloudinary.uploader.destroy(pdf_url);
-    //   }
+    if (!pdf_url || !pdf_path) {
+      return res.status(400).json({
+        success: false,
+        message: "Please upload resume.",
+      });
+    }
 
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Required fields missing",
-    //   });
-    // }
-
-    // const [user] = await db.execute(
-    //   "SELECT id FROM users WHERE id = ? LIMIT 1",
-    //   [userId]
-    // );
-
-    // if (user.length === 0) {
-    //   if (pdf_url) {
-    //     await cloudinary.uploader.destroy(pdf_url);
-    //   }
-
-    //   return res.status(404).json({
-    //     success: false,
-    //     message: "user not found",
-    //   });
-    // }
-
-    await db.execute(
-      `UPDATE users SET domain = ?, pdf_url = ?`,
-      [domain, pdf_url]
+    const [user] = await db.execute(
+      "SELECT id FROM users WHERE id = ? LIMIT 1",
+      [userId]
     );
 
-    return res.status(302).json({ success: true, message: "Updated successfully ." })
+    if (user.length === 0) {
+      if (pdf_url) {
+        await cloudinary.uploader.destroy(pdf_url);
+      }
+
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    const [existingUser] = await db.execute(
+      "SELECT pdf_url FROM users WHERE id = ?",
+      [userId]
+    );
+
+    if (existingUser[0]?.pdf_url) {
+      await cloudinary.uploader.destroy(existingUser[0].pdf_url);
+    }
+
+    await db.execute(
+      `UPDATE users 
+       SET first_name = ?, last_name = ?, mobile = ?, domain = ?, pdf_url = ?
+       WHERE id = ?`,
+      [first_name, last_name, mobile, domain, pdf_url, userId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Updated successfully.",
+    });
 
   } catch (error) {
+    console.error(error);
+
     return res.status(500).json({
       success: false,
-      message: "Internal server error ."
-    })
+      message: "Internal server error.",
+    });
   }
-}
+};
 
 export const getUserById  = async(req,res) =>{
   try {
@@ -274,3 +280,54 @@ export const getUserById  = async(req,res) =>{
       })
   }
 }
+
+export const updateBasicUserProfileById = async (req, res) => {
+     console.log(req.body)
+  try {
+    const userId = req.params.id;
+    const { first_name, last_name, mobile } = req.body;
+ 
+
+    // Validate required fields
+    if (!first_name || !last_name || !mobile) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required.",
+      });
+    }
+
+    // Check if user exists
+    const [user] = await db.execute(
+      "SELECT id FROM users WHERE id = ? LIMIT 1",
+      [userId]
+    );
+
+    if (user.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // Update only basic fields
+    await db.execute(
+      `UPDATE users 
+       SET first_name = ?, last_name = ?, mobile = ?
+       WHERE id = ?`,
+      [first_name, last_name, mobile, userId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully.",
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error.",
+    });
+  }
+};

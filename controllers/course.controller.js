@@ -257,7 +257,8 @@ export const getCoursesByCategoryId = async (req, res) => {
   } catch (error) {
     return res.status(500).json({ success: false, message: "Internal server error !" })
   }
-}
+  
+};
 
 export const getActiveCourses = async (req, res) => {
   try {
@@ -281,7 +282,7 @@ export const getActiveCourses = async (req, res) => {
   } catch (error) {
     return res.status(500).json({ success: false, message: "Internal server error !" })
   }
-}
+};
 
 export const enrollCourse = async (req, res) => {
   try {
@@ -363,15 +364,24 @@ export const getCoursesByUserId = async (req, res) => {
     );
 
     if (courses == 0) {
-      return res.status(400).json({ success: false, message: "NO course is enrolled by user ." })
+      return res.status(400).json({
+         success: false, 
+         message: "NO course is enrolled by user ."
+         })
     }
 
-    return res.status(200).json({ success: true, courses: courses })
+    return res.status(200).json({ 
+      success: true, 
+      courses: courses 
+    })
 
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Internal server error ." })
+    return res.status(500).json({ 
+      success: false,
+       message: "Internal server error ." 
+      })
   }
-}
+};
 
 export const getCourseById = async (req, res) => {
   try {
@@ -388,18 +398,18 @@ export const getCourseById = async (req, res) => {
     cat.name AS category_name,
     GROUP_CONCAT(cm.title) AS material_titles
 
-  FROM courses c
+     FROM courses c
 
-  JOIN categories cat 
-   ON c.category_id = cat.id
+     JOIN categories cat 
+     ON c.category_id = cat.id
 
-  LEFT JOIN course_materials cm
-   ON cm.course_id = c.id
+    LEFT JOIN course_materials cm
+    ON cm.course_id = c.id
 
-  WHERE c.id = ?
+    WHERE c.id = ?
 
-  GROUP BY c.id
-`,
+    GROUP BY c.id
+    `,
       [id]
     );
 
@@ -410,9 +420,35 @@ export const getCourseById = async (req, res) => {
       });
     }
 
+    const [avgResult] = await db.execute(
+            `SELECT AVG(rating) AS avgRating 
+             FROM course_reviews 
+             WHERE course_id = ?`,
+            [id]
+        );
+
+        const [reviews] = await db.execute(
+            `SELECT rating, review_text, created_at 
+             FROM course_reviews 
+             WHERE course_id = ?
+             ORDER BY created_at DESC
+             LIMIT 5`,
+            [id]
+        );
+
+        if (reviews.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No reviews found."
+            });
+        }
+
     return res.json({
       success: true,
-      data: course[0]
+      data: course[0],
+      avgRating: avgResult[0].avgRating || 0,
+      totalReviews: reviews.length,
+      reviews: reviews
     });
 
 
@@ -420,13 +456,10 @@ export const getCourseById = async (req, res) => {
     console.log("error ", error)
     return res.status(500).json({ success: false, message: "Internal server error ." })
   }
-}
+};
 
 export const updateCourseProgress = async (req, res) => {
-  console.log(req.body)
-  console.log(req.params.id)
   try {
-
     const { completed_lessons_ids } = req.body;
     const course_id = req.params.id;
     const userId = req.user.id;
@@ -438,33 +471,69 @@ export const updateCourseProgress = async (req, res) => {
       });
     }
 
-    // if (completed_lessons_ids.length == 0) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Please send ids."
-    //   });
-    // }
+    if (!completed_lessons_ids || completed_lessons_ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please send ids."
+      });
+    }
 
-
-    const [course] = await db.execute(
-      "SELECT total_lectures FROM courses WHERE id = ?",
-      [course_id]
+    const [progressData] = await db.execute(
+      `SELECT 
+         c.total_lectures,
+         cp.completed_lessons
+       FROM courses c
+       JOIN course_progress cp 
+         ON cp.course_id = c.id
+       WHERE cp.course_id = ? AND cp.user_id = ?`,
+      [course_id, userId]
     );
 
-    const totalLessons = course[0].total_lectures;
-    const completedCount = completed_lessons_ids.length;
+    if (progressData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Course progress not found."
+      });
+    }
+
+    const totalLessons = progressData[0].total_lectures;
+    let existingLessons = [];
+
+    const rawLessons = progressData[0].completed_lessons;
+
+    if (rawLessons) {
+      try {
+        existingLessons = typeof rawLessons === "string"
+          ? JSON.parse(rawLessons)
+          : rawLessons;
+      } catch {
+        existingLessons = rawLessons.split(",").map(id => Number(id));
+      }
+    }
+
+    if (!Array.isArray(existingLessons)) {
+      existingLessons = [];
+    }
+
+    completed_lessons_ids.forEach(id => {
+      if (!existingLessons.includes(id)) {
+        existingLessons.push(id);
+      }
+    });
+
+    const completedCount = existingLessons.length;
     const remainingLessons = totalLessons - completedCount;
     const progressPercent = ((completedCount / totalLessons) * 100).toFixed(2);
 
     await db.execute(
       `UPDATE course_progress 
-     SET completed_lessons = ?, 
-       remaining_lessons = ?, 
-       progress_percent = ?, 
-       status = ?
-     WHERE user_id = ? AND course_id = ?`,
+       SET completed_lessons = ?, 
+           remaining_lessons = ?, 
+           progress_percent = ?, 
+           status = ?
+       WHERE user_id = ? AND course_id = ?`,
       [
-        JSON.stringify(completed_lessons_ids),
+        JSON.stringify(existingLessons),
         remainingLessons,
         progressPercent,
         progressPercent == 100 ? "Completed" : "In Progress",
@@ -473,19 +542,19 @@ export const updateCourseProgress = async (req, res) => {
       ]
     );
 
-    return res.status(302).json({
+    return res.status(200).json({
       success: true,
-      message: "Progress saved ."
-    })
+      message: "Progress saved."
+    });
 
   } catch (error) {
-    console.log(error)
+    console.log(error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error ."
-    })
+      message: "Internal server error."
+    });
   }
-}
+};
 
 export const getCourseProgressByCourseId = async (req, res) => {
   try {
@@ -523,4 +592,4 @@ export const getCourseProgressByCourseId = async (req, res) => {
       message: "Internal server error ."
     })
   }
-}
+};

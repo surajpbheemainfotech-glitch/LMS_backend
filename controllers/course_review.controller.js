@@ -1,4 +1,4 @@
-import db from "../config/db"
+import db from "../config/db.js"
 
 export const addReview = async (req, res) => {
     try {
@@ -21,7 +21,7 @@ export const addReview = async (req, res) => {
         }
 
         const [course] = await db.execute(
-            `SELECT name FROM courses WHERE id = ?`,
+            `SELECT title FROM courses WHERE id = ?`,
             [id]
         )
 
@@ -105,10 +105,51 @@ export const deleteReview = async (req, res) => {
     }
 }
 
-// export const getCourseReviewByCourseId = async(req,res) =>{
-//     try {
-        
-//     } catch (error) {
-        
-//     }
-// }
+export const getCourseReviewByCourseId = async (req, res) => {
+    try {
+        const courseId = req.params.id;
+
+        if (!courseId) {
+            return res.status(400).json({
+                success: false,
+                message: "Course not available."
+            });
+        }
+
+        const [avgResult] = await db.execute(
+            `SELECT AVG(rating) AS avgRating 
+             FROM course_reviews 
+             WHERE course_id = ?`,
+            [courseId]
+        );
+
+        const [reviews] = await db.execute(
+            `SELECT rating, review_text, created_at 
+             FROM course_reviews 
+             WHERE course_id = ?
+             ORDER BY created_at DESC
+             LIMIT 5`,
+            [courseId]
+        );
+
+        if (reviews.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No reviews found."
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            avgRating: avgResult[0].avgRating || 0,
+            totalReviews: reviews.length,
+            reviews: reviews
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error."
+        });
+    }
+};

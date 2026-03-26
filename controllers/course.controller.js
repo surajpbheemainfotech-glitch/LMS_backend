@@ -235,11 +235,13 @@ export const getCoursesByCategoryId = async (req, res) => {
 
     const [courseRows] = await db.execute(
       `SELECT 
-    id,title,description,short_description,
-    price,thumbnail,level,language, duration,
-    total_lectures,category_id,is_published,created_at,updated_at
-    FROM courses
-    WHERE category_id = ?`,
+    c.id, c.title, c.description, c.short_description,c.price,
+    c.thumbnail, c.level, c.language, c.duration,c.total_lectures,c.category_id,
+    cat.name AS category_name,
+    c.is_published, c.created_at, c.updated_at
+  FROM courses c
+  JOIN categories cat ON c.category_id = cat.id
+  WHERE c.category_id = ?`,
       [category_id]
     );
 
@@ -257,7 +259,7 @@ export const getCoursesByCategoryId = async (req, res) => {
   } catch (error) {
     return res.status(500).json({ success: false, message: "Internal server error !" })
   }
-  
+
 };
 
 export const getActiveCourses = async (req, res) => {
@@ -365,53 +367,46 @@ export const getCoursesByUserId = async (req, res) => {
 
     if (courses == 0) {
       return res.status(400).json({
-         success: false, 
-         message: "NO course is enrolled by user ."
-         })
+        success: false,
+        message: "NO course is enrolled by user ."
+      })
     }
 
-    return res.status(200).json({ 
-      success: true, 
-      courses: courses 
+    return res.status(200).json({
+      success: true,
+      courses: courses
     })
 
   } catch (error) {
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
-       message: "Internal server error ." 
-      })
+      message: "Internal server error ."
+    })
   }
 };
 
 export const getCourseById = async (req, res) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
 
     if (!id) {
-      return res.status(400).json({ success: false, message: "Selected course are not available ." })
+      return res.status(400).json({
+        success: false,
+        message: "Selected course are not available."
+      });
     }
 
-    const [course] = await db.execute(
-      ` SELECT 
-    c.id, c.title, c.description, c.short_description,
-    c.price, c.thumbnail, c.level, c.language, c.duration, c.total_lectures,
-    cat.name AS category_name,
-    GROUP_CONCAT(cm.title) AS material_titles
-
-     FROM courses c
-
-     JOIN categories cat 
-     ON c.category_id = cat.id
-
-    LEFT JOIN course_materials cm
-    ON cm.course_id = c.id
-
-    WHERE c.id = ?
-
-    GROUP BY c.id
-    `,
-      [id]
-    );
+    const [course] = await db.execute(`SELECT 
+      c.id, c.title, c.description, c.short_description,
+      c.price, c.thumbnail, c.level, c.language, c.duration, c.total_lectures,
+      cat.name AS category_name,
+      GROUP_CONCAT(cm.title) AS material_titles
+      FROM courses c
+      JOIN categories cat ON c.category_id = cat.id
+      LEFT JOIN course_materials cm ON cm.course_id = c.id
+      WHERE c.id = ?
+      GROUP BY c.id
+    `, [id]);
 
     if (course.length === 0) {
       return res.status(404).json({
@@ -421,40 +416,35 @@ export const getCourseById = async (req, res) => {
     }
 
     const [avgResult] = await db.execute(
-            `SELECT AVG(rating) AS avgRating 
-             FROM course_reviews 
-             WHERE course_id = ?`,
-            [id]
-        );
+      `SELECT AVG(rating) AS avgRating 
+       FROM course_reviews 
+       WHERE course_id = ?`,
+      [id]
+    );
 
-        const [reviews] = await db.execute(
-            `SELECT rating, review_text, created_at 
-             FROM course_reviews 
-             WHERE course_id = ?
-             ORDER BY created_at DESC
-             LIMIT 5`,
-            [id]
-        );
-
-        if (reviews.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "No reviews found."
-            });
-        }
+    const [reviews] = await db.execute(
+      `SELECT rating, review_text, created_at 
+       FROM course_reviews 
+       WHERE course_id = ?
+       ORDER BY created_at DESC
+       LIMIT 5`,
+      [id]
+    );
 
     return res.json({
       success: true,
       data: course[0],
-      avgRating: avgResult[0].avgRating || 0,
+      avgRating: avgResult[0]?.avgRating || 0,
       totalReviews: reviews.length,
       reviews: reviews
     });
 
-
   } catch (error) {
-    console.log("error ", error)
-    return res.status(500).json({ success: false, message: "Internal server error ." })
+    console.log("error ", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error."
+    });
   }
 };
 

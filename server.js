@@ -11,6 +11,7 @@ import categoryRouter from "./routes/category.route.js";
 import courseRouter from "./routes/course.route.js";
 import materialRouter from "./routes/course_material.route.js";
 import reviewRouter from "./routes/review.route.js";
+import assessmentRouter from "./routes/assessment.route.js";
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ app.use("/api/category",categoryRouter)
 app.use("/api/course", courseRouter);
 app.use("/api/std_material",materialRouter)
 app.use("/api/review",reviewRouter)
+app.use("/api/assessment", assessmentRouter)
 
 const PORT = process.env.PORT || 5000;
 const startServer = async () => {

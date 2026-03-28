@@ -226,7 +226,7 @@ export const getScoreAndAttemp = async (req, res) => {
 
 export const getCertificateByUserId = async (req, res) => {
 
-    const userId = req.params.id
+    const userId = req.params.id || 12
 
     if (!userId) {
         return res.status(400).json({ success: false, message: "Unauthorized." });

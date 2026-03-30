@@ -1,20 +1,20 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import db from "../config/db.js";
-import cloudinary from "../config/cloudinaryConfig.js";
 
-export const signup = async (req, res) => {
-  try {
-    const { first_name, last_name, mobile, email, password } = req.body;
+export const addAdmins = async (req, res) => {
 
-    if (!first_name || !last_name || !mobile || !email || !password) {
+   const { first_name, last_name, mobile, email, password , role, description} = req.body;
+
+    if (!first_name || !last_name || !mobile || !email || !password || !role || !description) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
       });
     }
-
-    const [existing] = await db.execute("SELECT id FROM users WHERE email = ?", [
+  try {
+   
+    const [existing] = await db.execute("SELECT first_name, last_name FROM users WHERE email = ?", [
       email,
     ]);
 
@@ -32,6 +32,16 @@ export const signup = async (req, res) => {
       [first_name, last_name, mobile, email, hashedPassword]
     );
 
+   const [role] =  await db.execute(
+      `INSERT INTO roles (role_name, description) VALUES (?, ?)`,
+      [role, description]
+    )
+
+    await db.execute(
+      `INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)`,
+      [result.insertId, role.insertId]
+    )
+
     return res.status(201).json({
       success: true,
       message: "User Registered Successfully",
@@ -46,10 +56,9 @@ export const signup = async (req, res) => {
   }
 };
 
-export const login = async (req, res) => {
+export const adminLogin = async (req, res) => {
 
-  try {
-    let { email, password } = req.body;
+   const { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -58,9 +67,17 @@ export const login = async (req, res) => {
       });
     }
 
-    const [rows] = await db.execute("SELECT * FROM users WHERE email = ?", [
-      email,
-    ]);
+  try {
+    const [rows] = await db.execute(
+      `SELECT 
+          u.id, u.first_name, u.last_name, u.email, u.password,
+          r.id AS role_id, r.role_name
+       FROM users u
+       JOIN user_roles ur ON u.id = ur.user_id
+       JOIN roles r ON ur.role_id = r.id
+       WHERE u.email = ?`,
+      [email]
+    );
 
     if (rows.length === 0) {
       return res.status(401).json({
@@ -173,75 +190,6 @@ export const getAllUser = async (req, res) => {
     });
   }
 }
-
-export const updateUserProfileById = async (req, res) => {
-  try {
-    const userId = req.params.id;
-    const { first_name, last_name, mobile, domain } = req.body;
-
-    const pdf_path = req.file?.path || null;
-    const pdf_url = req.file?.filename || null;
-
-    if (!domain) {
-      return res.status(400).json({
-        success: false,
-        message: "Please select domain.",
-      });
-    }
-
-    if (!pdf_url || !pdf_path) {
-      return res.status(400).json({
-        success: false,
-        message: "Please upload resume.",
-      });
-    }
-
-    const [user] = await db.execute(
-      "SELECT id FROM users WHERE id = ? LIMIT 1",
-      [userId]
-    );
-
-    if (user.length === 0) {
-      if (pdf_url) {
-        await cloudinary.uploader.destroy(pdf_url);
-      }
-
-      return res.status(404).json({
-        success: false,
-        message: "User not found.",
-      });
-    }
-
-    const [existingUser] = await db.execute(
-      "SELECT pdf_url FROM users WHERE id = ?",
-      [userId]
-    );
-
-    if (existingUser[0]?.pdf_url) {
-      await cloudinary.uploader.destroy(existingUser[0].pdf_url);
-    }
-
-    await db.execute(
-      `UPDATE users 
-       SET first_name = ?, last_name = ?, mobile = ?, domain = ?, pdf_url = ?
-       WHERE id = ?`,
-      [first_name, last_name, mobile, domain, pdf_url, userId]
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: "Updated successfully.",
-    });
-
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error.",
-    });
-  }
-};
 
 export const getUserById  = async(req,res) =>{
   try {

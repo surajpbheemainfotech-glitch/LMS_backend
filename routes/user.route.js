@@ -1,28 +1,22 @@
 import express from 'express'
 import {
+    addAdmins,
+    adminLogin,
     getAllUser,
     getUserById,
-    login,
     logout,
-    signup,
-    updateUserProfileById
 } from '../controllers/user.controller.js'
 import {
     signupValidation,
     loginValidation
 } from "../middleware/authVallidation.js"
 import { verifyToken } from '../middleware/verifyToken.js'
-import { createPdfUpload } from '../middleware/cloud.upload/pdf.upload.js'
 
 const userRouter = express.Router()
 
-const uploadPdf = createPdfUpload("LMS_PROJECT/user-resumes", "pdf");
-
-userRouter.post("/login", loginValidation, login)
-userRouter.post("/signup", signupValidation, signup)
+userRouter.post("/login", loginValidation, adminLogin)
+userRouter.post("/add_admin", signupValidation, addAdmins)
 userRouter.post("/logout", logout)
-
-userRouter.patch("/update-profile/:id", verifyToken,uploadPdf.single("pdf"), updateUserProfileById)
 
 userRouter.get("/all-users", getAllUser)
 userRouter.get("/user-profile/:id",verifyToken,getUserById)

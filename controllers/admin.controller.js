@@ -7,10 +7,8 @@ dotenv.config();
 
 export const adminLogin = async (req, res) => {
   try {
- 
-    const { email, password } = req.body;
+    let { email, password } = req.body;
 
- 
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -19,64 +17,75 @@ export const adminLogin = async (req, res) => {
     }
 
     const [rows] = await db.execute(
-      "SELECT * FROM admin WHERE email = ?",
+      `SELECT 
+          u.id, u.first_name, u.last_name, u.email, u.password,
+          r.id AS role_id, r.role_name
+       FROM users u
+       JOIN user_roles ur ON u.id = ur.user_id
+       JOIN roles r ON ur.role_id = r.id
+       WHERE u.email = ?`,
       [email]
     );
 
     if (rows.length === 0) {
       return res.status(401).json({
         success: false,
-        message: "Invalid Credentials",
+        message: "Invalid Email",
       });
     }
 
-    const admin = rows[0];
+    const user = rows[0];
 
-    const isPasswordMatch = await bcrypt.compare(
-      password,
-      admin.password
-    );
+    const isMatch = await bcrypt.compare(password, user.password);
 
-    if (!isPasswordMatch) {
+    if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: "Invalid Credentials",
+        message: "Invalid Password",
+      });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: "JWT_SECRET missing in env",
       });
     }
 
     const token = jwt.sign(
       {
-        id: admin.id,
-        email: admin.email,
-        role: admin.role,
+        id: user.id,
+        email: user.email,
+        role: user.role_name,
+        role_id: user.role_id,
       },
       process.env.JWT_SECRET,
-      {
-        expiresIn: process.env.JWT_EXPIRES_IN || "1d",
-      }
+      { expiresIn: "1d" }
     );
 
-    res.cookie("adminToken", token, {
+    const isProd = process.env.NODE_ENV === "production";
+
+    res.cookie("userToken", token, {
       httpOnly: true,
-      secure: false, 
-      sameSite: "Lax",
+      secure: isProd,
+      sameSite: isProd ? "None" : "Strict",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
     return res.status(200).json({
       success: true,
-      message: "Admin Login Successful",
-      token, 
-      admin: {
-        id: admin.id,
-        email: admin.email,
-        role: admin.role,
+      message: "Login Successful",
+      token,
+      user: {
+        id: user.id,
+        first_name: user.first_name,
+        email: user.email,
+        role: user.role_name,
+        role_id: user.role_id,
       },
     });
-
   } catch (error) {
-    console.error("Admin Login Error:", error);
-
+    console.error("Login Error:", error);
     return res.status(500).json({
       success: false,
       message: "Server Error",

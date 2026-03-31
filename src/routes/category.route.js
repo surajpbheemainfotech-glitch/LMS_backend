@@ -13,10 +13,10 @@ const categoryRouter = express.Router();
 const categoryUpload = createImageUpload("LMS_PROJECT/categories", "category");
 
 
-categoryRouter.post("/add",verifyToken,categoryUpload.single("icon") ,addCategory)
+categoryRouter.post("/add",verifyToken, categoryUpload.single("icon") ,addCategory)
 categoryRouter.get("/get", getCategories)
-categoryRouter.patch("/update/:id",verifyToken, updateCategory)
-categoryRouter.delete("/delete/:id",verifyToken, deleteCategory)
+categoryRouter.patch("/update/:slug",verifyToken, updateCategory)
+categoryRouter.delete("/delete/:slug",verifyToken, deleteCategory)
 
 
 export default categoryRouter

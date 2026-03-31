@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import cloudinary from "../config/cloudinaryConfig.js";
+import { createSlug } from "../services/service.slug.generator.js";
 
 export const addCategory = async (req, res) => {
   try {
@@ -39,9 +40,11 @@ export const addCategory = async (req, res) => {
       });
     }
 
+    const catergorySlug = createSlug(name)
+
     await db.execute(
-      "INSERT INTO categories (name, icon, icon_public_id, created_by) VALUES (?, ?, ?, ?)",
-      [name, req.file.path, req.file.filename, req.user.id]
+      "INSERT INTO categories (name, icon, icon_public_id, slug, created_by) VALUES (?, ?, ?, ?, ?)",
+      [name, req.file.path, req.file.filename, catergorySlug, req.user.id ]
     );
 
     return res.status(201).json({
@@ -49,6 +52,7 @@ export const addCategory = async (req, res) => {
       message: "Category added successfully",
       data: {
         name,
+        catergorySlug,
         icon: req.file.path,
         icon_public_id: req.file.filename,
       },
@@ -74,7 +78,6 @@ export const addCategory = async (req, res) => {
 export const getCategories = async (req, res) => {
   try {
 
-
     const [categories] = await db.execute(`
      SELECT 
       categories.*, 
@@ -85,8 +88,6 @@ export const getCategories = async (req, res) => {
     GROUP BY categories.id
     ORDER BY categories.created_at DESC
 `);
-
-
 
     res.status(200).json({
       success: true,
@@ -104,7 +105,7 @@ export const getCategories = async (req, res) => {
 
 export const updateCategory = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { slug } = req.params;
     const { name } = req.body;
 
     if (!name) {
@@ -115,8 +116,8 @@ export const updateCategory = async (req, res) => {
     }
 
     const [existingCategory] = await db.execute(
-      "SELECT id FROM categories WHERE id = ? LIMIT 1",
-      [id]
+      "SELECT id FROM categories WHERE slug = ? LIMIT 1",
+      [slug]
     );
 
     if (existingCategory.length === 0) {
@@ -128,7 +129,7 @@ export const updateCategory = async (req, res) => {
 
     const [duplicate] = await db.execute(
       "SELECT id FROM categories WHERE name = ?",
-      [name, id]
+      [name]
     );
 
     if (duplicate.length > 0) {
@@ -160,11 +161,11 @@ export const updateCategory = async (req, res) => {
 
 export const deleteCategory = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { slug } = req.params;
 
     const [existingCategory] = await db.execute(
-      "SELECT icon_public_id FROM categories WHERE id = ? LIMIT 1",
-      [id]
+      "SELECT icon_public_id FROM categories WHERE slug = ? LIMIT 1",
+      [slug]
     );
 
     if (existingCategory.length === 0) {
@@ -181,7 +182,7 @@ export const deleteCategory = async (req, res) => {
       console.log("Cloudinary delete result:", result);
     }
 
-    await db.execute("DELETE FROM categories WHERE id = ?", [id]);
+    await db.execute("DELETE FROM categories WHERE slug = ?", [slug]);
 
     return res.status(200).json({
       success: true,

@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import cloudinary from "../config/cloudinaryConfig.js";
+import { createSlug } from "../services/service.slug.generator.js";
 
 export const addCourse = async (req, res) => {
   try {
@@ -45,15 +46,16 @@ export const addCourse = async (req, res) => {
       });
     }
 
+     const courseSlug = createSlug(title)
     await db.execute(
       `INSERT INTO courses 
       (title, description, short_description, price, thumbnail, thumbnail_public_id,
-       level, language, duration, total_lectures, category_id, created_by) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       level, language, duration, total_lectures, category_id, created_by, slug) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         title, description, short_description || null, price, thumbnail,
         thumbnail_public_id, level || "Beginner", language || "English", duration || null,
-        total_lectures || 0, category_id, req.user.id,
+        total_lectures || 0, category_id, req.user.id, courseSlug
       ]
     );
 
@@ -62,6 +64,7 @@ export const addCourse = async (req, res) => {
       message: "Course added successfully",
       data: {
         title,
+        slug,
         thumbnail,
         thumbnail_public_id,
       },
@@ -121,7 +124,7 @@ export const getCourses = async (req, res) => {
 
 export const updateCourse = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { slug} = req.params;
 
     const {
       title, description, short_description, price, level,
@@ -138,8 +141,8 @@ export const updateCourse = async (req, res) => {
     }
 
     const [existing] = await db.execute(
-      "SELECT id FROM courses WHERE id = ? LIMIT 1",
-      [id]
+      "SELECT id FROM courses WHERE slug = ? LIMIT 1",
+      [slug]
     );
 
     if (existing.length === 0) {
@@ -165,10 +168,10 @@ export const updateCourse = async (req, res) => {
       `UPDATE courses SET
         title = ?,description = ?,short_description = ?, price = ?, 
         level = ?, language = ?, duration = ?, total_lectures = ?, category_id = ?
-      WHERE id = ?`,
+      WHERE slug = ?`,
       [
         title, description, short_description, price, level,
-        language, duration, total_lectures, category_id, id,
+        language, duration, total_lectures, category_id, slug,
       ]
     );
 

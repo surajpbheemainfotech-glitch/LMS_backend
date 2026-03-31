@@ -45,6 +45,24 @@ export const signupValidation = (req, res, next) => {
         "string.pattern.base":
           "Password must include uppercase, lowercase, number and special character",
       }),
+
+
+    role: Joi.string()
+      .valid("user", "admin", "intern", "super admin", "teacher", "company")
+      .default("user")
+      .messages({
+        "any.only": "Role must be one of user, admin, intern, superadmin",
+      }),
+
+    description: Joi.string()
+      .trim()
+      .min(10)
+      .max(500)
+      .optional()
+      .messages({
+        "string.min": "Description must be at least 10 characters",
+        "string.max": "Description cannot exceed 500 characters",
+      }),
   });
 
   const { error } = schema.validate(req.body, { abortEarly: false });

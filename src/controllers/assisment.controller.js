@@ -5,7 +5,7 @@ import {
     getQuestions,
     handleCertificate,
     saveAttempt
-} from "../services/assessment.service.js";
+} from "../services/service.assessment.js";
 
 export const insertAssesment = async (req, res) => {
     try {

@@ -2,9 +2,10 @@ import express from 'express'
 import {
     addAdmins,
     adminLogin,
+    adminLogout,
     getAllUser,
     getUserById,
-    logout,
+    removeAdmins,
 } from '../controllers/user.controller.js'
 import {
     signupValidation,
@@ -14,11 +15,13 @@ import { verifyToken } from '../middleware/verifyToken.js'
 
 const userRouter = express.Router()
 
-userRouter.post("/login", loginValidation, adminLogin)
+userRouter.post("/admin_login", loginValidation, adminLogin)
 userRouter.post("/add_admin", signupValidation, addAdmins)
-userRouter.post("/logout", logout)
+userRouter.post("/logout", adminLogout) 
 
 userRouter.get("/all-users", getAllUser)
 userRouter.get("/user-profile/:id",verifyToken,getUserById)
+
+userRouter.delete("/remove-admin/:id",removeAdmins)
 
 export default userRouter

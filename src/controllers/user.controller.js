@@ -4,16 +4,16 @@ import db from "../config/db.js";
 
 export const addAdmins = async (req, res) => {
 
-   const { first_name, last_name, mobile, email, password , role, description} = req.body;
+  const { first_name, last_name, mobile, email, password, role, description } = req.body;
 
-    if (!first_name || !last_name || !mobile || !email || !password || !role || !description) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required",
-      });
-    }
+  if (!first_name || !last_name || !mobile || !email || !password || !role || !description) {
+    return res.status(400).json({
+      success: false,
+      message: "All fields are required",
+    });
+  }
   try {
-   
+
     const [existing] = await db.execute("SELECT first_name, last_name FROM users WHERE email = ?", [
       email,
     ]);
@@ -32,14 +32,14 @@ export const addAdmins = async (req, res) => {
       [first_name, last_name, mobile, email, hashedPassword]
     );
 
-   const [role] =  await db.execute(
+    const [roles] = await db.execute(
       `INSERT INTO roles (role_name, description) VALUES (?, ?)`,
       [role, description]
     )
 
     await db.execute(
       `INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)`,
-      [result.insertId, role.insertId]
+      [result.insertId, roles.insertId]
     )
 
     return res.status(201).json({
@@ -58,14 +58,14 @@ export const addAdmins = async (req, res) => {
 
 export const adminLogin = async (req, res) => {
 
-   const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and Password are required",
-      });
-    }
+  if (!email || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Email and Password are required",
+    });
+  }
 
   try {
     const [rows] = await db.execute(
@@ -139,7 +139,7 @@ export const adminLogin = async (req, res) => {
   }
 };
 
-export const logout = (req, res) => {
+export const adminLogout = (req, res) => {
   try {
     const isProd = process.env.NODE_ENV === "production";
 
@@ -166,11 +166,15 @@ export const getAllUser = async (req, res) => {
   try {
 
     const [userRows] = await db.execute(`
-      SELECT 
-      id, first_name, last_name, mobile, email, password, role, 
-      created_at, updated_at
-       FROM users`
-    );
+  SELECT 
+    u.id, u.first_name, u.last_name, u.mobile, u.email, u.password,
+    r.role_name AS role, r.description AS role_description,
+    u.created_at, u.updated_at
+  FROM users u
+  LEFT JOIN user_roles ur ON u.id = ur.user_id
+  LEFT JOIN roles r ON ur.role_id = r.id
+  WHERE r.role_name != 'super admin'
+`);
 
     if (userRows.length == 0) {
       return res.status(400).json({
@@ -191,41 +195,71 @@ export const getAllUser = async (req, res) => {
   }
 }
 
-export const getUserById  = async(req,res) =>{
+export const getUserById = async (req, res) => {
   try {
 
-    const {id}  = req.params
+    const { id } = req.params
 
-     if(!id){
+    if (!id) {
       return res.status(404).json({
-        success: false, 
+        success: false,
         message: "Login please ."
       })
-     }
+    }
 
-  const [user] = await db.execute(
-    `SELECT first_name, last_name, mobile, email FROM users
+    const [user] = await db.execute(
+      `SELECT first_name, last_name, mobile, email FROM users
      WHERE id = ?`,
-     [id]
+      [id]
     );
 
-    if(user.length == 0){
-       return res.status(404).json({
-        success: false, 
+    if (user.length == 0) {
+      return res.status(404).json({
+        success: false,
         message: "Login please ."
       })
     }
 
     return res.status(200).json({
-      success: true, 
+      success: true,
       user: user
     })
 
   } catch (error) {
     return res.status(500).json({
       success: false,
-       message: "Internal server error ."
+      message: "Internal server error ."
+    })
+  }
+}
+
+export const removeAdmins = async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const [existing] = await db.execute(`
+          SELECT first_name FROM users WHERE id = ?`,
+      [id])
+
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not avaiable ."
       })
+    }
+
+    await db.execute(`DELETE FROM users WHERE id = ?`,
+      [id])
+
+    return res.status(200).json({
+      success: true,
+      message: "Admin remove successfully ."
+    })
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error ."
+    })
   }
 }
 

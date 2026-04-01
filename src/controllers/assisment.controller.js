@@ -66,15 +66,18 @@ export const insertAssesment = async (req, res) => {
 export const getCourseAssessment = async (req, res) => {
 
     try {
+        const course_slug = req.params.slug
 
-        const course_id = req.params.id
-
-        if (!course_id) {
+        if (!course_slug) {
             return res.status(400).json({
                 success: false,
                 message: "Select course first"
             });
         }
+
+        const [course] = await db.execute(
+            `SELECT id FROM courses slug = ?`,[course_slug]
+        )
 
         let assessment
 
@@ -86,7 +89,7 @@ export const getCourseAssessment = async (req, res) => {
 
 
 
-        assessment = await db.query(query, [course_id], (err, results) => {
+        assessment = await db.query(query, [course[0].id], (err, results) => {
             if (err) {
                 return res.status(500).json({ message: "DB Error" });
             }

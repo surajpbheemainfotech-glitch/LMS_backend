@@ -46,7 +46,7 @@ export const addCourse = async (req, res) => {
       });
     }
 
-     const courseSlug = createSlug(title)
+    const courseSlug = createSlug(title)
     await db.execute(
       `INSERT INTO courses 
       (title, description, short_description, price, thumbnail, thumbnail_public_id,
@@ -64,7 +64,7 @@ export const addCourse = async (req, res) => {
       message: "Course added successfully",
       data: {
         title,
-        slug,
+        courseSlug,
         thumbnail,
         thumbnail_public_id,
       },
@@ -91,17 +91,9 @@ export const getCourses = async (req, res) => {
 
     const [courses] = await db.execute(`
       SELECT 
-        courses.id,
-        courses.title,
-        courses.short_description,
-        courses.price,
-        courses.thumbnail,
-        courses.level,
-        courses.language,
-        courses.duration,
-        courses.total_lectures,
-        courses.is_published,
-        categories.name AS category_name,
+        courses.id, courses.title, courses.description, courses.short_description, courses.price, 
+        courses.thumbnail, courses.level, courses.language, courses.duration,
+        courses.total_lectures, courses.is_published, courses.slug, categories.name AS category_name,
         courses.created_at
       FROM courses
       JOIN categories ON courses.category_id = categories.id
@@ -124,16 +116,16 @@ export const getCourses = async (req, res) => {
 
 export const updateCourse = async (req, res) => {
   try {
-    const { slug} = req.params;
+    const { slug } = req.params;
 
     const {
-      title, description, short_description, price, level,
-      language, duration, total_lectures, category_id,
+        title, description, short_description, price, level,
+      language, duration, total_lectures, category_name,
     } = req.body;
 
     if (
       !title || !description || !short_description || !price || !level || !language ||
-      !duration || !total_lectures || !category_id) {
+      !duration || !total_lectures || !category_name) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -153,8 +145,8 @@ export const updateCourse = async (req, res) => {
     }
 
     const [category] = await db.execute(
-      "SELECT id FROM categories WHERE id = ? LIMIT 1",
-      [category_id]
+      "SELECT id FROM categories WHERE name = ? LIMIT 1",
+      [category_name]
     );
 
     if (category.length === 0) {
@@ -171,7 +163,7 @@ export const updateCourse = async (req, res) => {
       WHERE slug = ?`,
       [
         title, description, short_description, price, level,
-        language, duration, total_lectures, category_id, slug,
+        language, duration, total_lectures, category[0].id, slug,
       ]
     );
 
@@ -190,11 +182,11 @@ export const updateCourse = async (req, res) => {
 
 export const deleteCourse = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { slug } = req.params;
 
     const [existing] = await db.execute(
-      "SELECT thumbnail_public_id FROM courses WHERE id = ? LIMIT 1",
-      [id]
+      "SELECT thumbnail_public_id FROM courses WHERE slug = ? LIMIT 1",
+      [slug]
     );
 
     if (existing.length === 0) {
@@ -211,7 +203,7 @@ export const deleteCourse = async (req, res) => {
       console.log("Cloudinary delete result:", cloudinaryResult);
     }
 
-    await db.execute("DELETE FROM courses WHERE id = ?", [id]);
+    await db.execute("DELETE FROM courses WHERE slug = ?", [slug]);
 
     return res.status(200).json({
       success: true,
@@ -226,15 +218,25 @@ export const deleteCourse = async (req, res) => {
   }
 };
 
-export const getCoursesByCategoryId = async (req, res) => {
+export const getCoursesByCategorySlug = async (req, res) => {
 
   try {
-    const category_id = req.params.id;
+    const category_slug = req.params.slug;
 
 
-    if (!category_id) {
+    if (!category_slug) {
       return res.status(400).json({ success: false, message: "Please select category" })
     }
+
+    const [checkCategory] = await db.execute(
+      `SELECT id FROM categories WHERE slug = ?`, [slug]
+    )
+
+    if (checkCategory.length === 0) {
+      return res.status(404).json({ success: false, message: "Category was present ." })
+    }
+
+    const category_id = checkCategory[0].id
 
     const [courseRows] = await db.execute(
       `SELECT 
@@ -264,7 +266,7 @@ export const getCoursesByCategoryId = async (req, res) => {
   }
 
 };
-
+ 
 export const getActiveCourses = async (req, res) => {
   try {
 
@@ -289,11 +291,12 @@ export const getActiveCourses = async (req, res) => {
   }
 };
 
-export const enrollCourse = async (req, res) => {
+export const enrollStudentInCourse = async (req, res) => {
   try {
-    const { user_id, course_id, amount } = req.body;
-
-    if (!user_id) {
+    const {  course_id, amount } = req.body;
+    const student_id = req.user.id;
+    
+    if (!student_id) {
       return res.status(400).json({ success: false, message: "Login to enroll course." });
     }
 
@@ -318,7 +321,7 @@ export const enrollCourse = async (req, res) => {
       `INSERT INTO purchased_courses 
        (user_id, course_id, purchased_at, amount, payment_status)
        VALUES (?, ?, ?, ?, ?)`,
-      [user_id, course_id, new Date(), amount, "paid"]
+      [student_id, course_id, new Date(), amount, "paid"]
     );
 
     const purchaseId = purchaseResult.insertId;
@@ -329,7 +332,7 @@ export const enrollCourse = async (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
         purchaseId,
-        user_id,
+        student_id,
         course_id,
         courseLectures[0].total_lectures,
         0,
@@ -351,13 +354,23 @@ export const enrollCourse = async (req, res) => {
   }
 };
 
-export const getCoursesByUserId = async (req, res) => {
+export const getStudentCourses = async (req, res) => {
   try {
-    const userId = req.params.id;
+    const slug = req.params.slug;
 
-    if (!userId) {
+    if (!slug) {
       return res.status(402).json({ success: false, message: "Please login first . " })
     }
+
+    const [checkStudent] = await db.execute(
+      `SELECT id FROM students WHERE slug = ? `, [slug]
+    )
+
+    if (checkStudent.length === 0) {
+      return res.status(404).json({ success: false, message: "Unauthorized" });
+    }
+
+    const userId = checkStudent[0].id;
 
     const [courses] = await db.execute(
       `SELECT c.*
@@ -388,11 +401,11 @@ export const getCoursesByUserId = async (req, res) => {
   }
 };
 
-export const getCourseById = async (req, res) => {
+export const getCourseBySlug = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { slug } = req.params;
 
-    if (!id) {
+    if (!slug) {
       return res.status(400).json({
         success: false,
         message: "Selected course are not available."
@@ -401,15 +414,15 @@ export const getCourseById = async (req, res) => {
 
     const [course] = await db.execute(`SELECT 
       c.id, c.title, c.description, c.short_description,
-      c.price, c.thumbnail, c.level, c.language, c.duration, c.total_lectures,
+      c.price, c.thumbnail, c.level, c.language, c.duration, c.total_lectures, c.slug,
       cat.name AS category_name,
       GROUP_CONCAT(cm.title) AS material_titles
       FROM courses c
       JOIN categories cat ON c.category_id = cat.id
       LEFT JOIN course_materials cm ON cm.course_id = c.id
-      WHERE c.id = ?
-      GROUP BY c.id
-    `, [id]);
+      WHERE c.slug = ?
+      GROUP BY c.slug
+    `, [slug]);
 
     if (course.length === 0) {
       return res.status(404).json({
@@ -422,7 +435,7 @@ export const getCourseById = async (req, res) => {
       `SELECT AVG(rating) AS avgRating 
        FROM course_reviews 
        WHERE course_id = ?`,
-      [id]
+      [course[0].id]
     );
 
     const [reviews] = await db.execute(
@@ -431,7 +444,7 @@ export const getCourseById = async (req, res) => {
        WHERE course_id = ?
        ORDER BY created_at DESC
        LIMIT 5`,
-      [id]
+      [course[0].id]
     );
 
     return res.json({
@@ -451,13 +464,13 @@ export const getCourseById = async (req, res) => {
   }
 };
 
-export const updateCourseProgress = async (req, res) => {
+export const updateStudentCourseProgress = async (req, res) => {
   try {
     const { completed_lessons_ids } = req.body;
-    const course_id = req.params.id;
+    const course_slug = req.params.slug;
     const userId = req.user.id;
 
-    if (!course_id) {
+    if (!course_slug) {
       return res.status(400).json({
         success: false,
         message: "Please select course."
@@ -471,6 +484,10 @@ export const updateCourseProgress = async (req, res) => {
       });
     }
 
+    const [checkCourse] = await db.execute(
+      `SELECT id FROM courses WHERE slug = ?`,[course_slug]
+    )
+    const course_id = checkCourse[0].id
     const [progressData] = await db.execute(
       `SELECT 
          c.total_lectures,
@@ -549,16 +566,27 @@ export const updateCourseProgress = async (req, res) => {
   }
 };
 
-export const getCourseProgressByCourseId = async (req, res) => {
+export const getCourseProgressByCourseSlug = async (req, res) => {
   try {
-    const courseId = req.params.id
+    const slug = req.params.id
 
-    if (!courseId) {
+    if (!slug) {
       return res.status(400).json({
         success: false,
         message: "This course is not available ."
       })
     };
+
+    const [checkCourse] = await db.execute(
+      `SELECT id FROM courses slug = ?`,[slug]
+    )
+
+    if(checkCourse.length === 0){
+      return res.status(400).json({
+        success: false,
+         message: "Invaild course ."})
+    }
+    const courseId = checkCourse[0].id
 
     const [courseProgress] = await db.execute(
       `SELECT 

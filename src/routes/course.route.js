@@ -6,13 +6,13 @@ import {
     getCourses,
     updateCourse,
     deleteCourse,
-    getCoursesByCategoryId,
     getActiveCourses,
-    enrollCourse,
-    getCoursesByUserId,
-    getCourseById,
-    updateCourseProgress,
-    getCourseProgressByCourseId
+    getCoursesByCategorySlug,
+    getCourseBySlug,
+    enrollStudentInCourse,
+    updateStudentCourseProgress,
+    getStudentCourses,
+    getCourseProgressByCourseSlug
 } from "../controllers/course.controller.js"
 import { createImageUpload } from "../middleware/cloud.upload/image.upload.js"
 
@@ -21,18 +21,18 @@ const courseUpload = createImageUpload("LMS_PROJECT/courses", "course");
 
 
 courseRouter.post("/add", verifyToken,courseUpload.single("thumbnail"), addCourse)
-courseRouter.post("/enroll",enrollCourse)
+courseRouter.post("/enroll",enrollStudentInCourse)
 
-courseRouter.patch("/update/:id", verifyToken, updateCourse)
-courseRouter.patch("/update-course-progress/:id", verifyToken, updateCourseProgress)
-courseRouter.delete("/delete/:id", verifyToken, deleteCourse)
+courseRouter.patch("/update/:slug", verifyToken, updateCourse)
+courseRouter.patch("/update-course-progress/:slug", verifyToken, updateStudentCourseProgress)
+courseRouter.delete("/delete/:slug", verifyToken, deleteCourse)
 
 
 courseRouter.get("/get",getCourses)
-courseRouter.get("/get/:id",getCourseById)
-courseRouter.get("/courses/:id", getCoursesByCategoryId)
+courseRouter.get("/get/:slug",getCourseBySlug)
+courseRouter.get("/courses/:slug", getCoursesByCategorySlug)
 courseRouter.get("/active-courses",verifyToken, getActiveCourses)
-courseRouter.get("/mycourses/:id",verifyToken, getCoursesByUserId)
-courseRouter.get("/check-course-progress/:id", verifyToken, getCourseProgressByCourseId)
+courseRouter.get("/mycourses/:slug",verifyToken, getStudentCourses)
+courseRouter.get("/check-course-progress/:slug", verifyToken, getCourseProgressByCourseSlug)
 
 export default courseRouter

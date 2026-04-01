@@ -12,6 +12,7 @@ import {
     loginValidation
 } from "../middleware/authVallidation.js"
 import { verifyToken } from '../middleware/verifyToken.js'
+import courseRouter from './course.route.js'
 
 const userRouter = express.Router()
 
@@ -23,5 +24,8 @@ userRouter.get("/all-users", getAllUser)
 userRouter.get("/user-profile/:id",verifyToken,getUserById)
 
 userRouter.delete("/remove-admin/:id",removeAdmins)
+
+//hadle courses
+userRouter.use("/course",courseRouter)
 
 export default userRouter

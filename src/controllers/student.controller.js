@@ -32,7 +32,7 @@ export const studentRegister = async (req, res) => {
         const slug = createSlug(last_name)
 
         const [result] = await db.execute(
-            "INSERT INTO students (first_name, last_name, mobile, email, password, slug) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO students (first_name, last_name, mobile, email, password, slug) VALUES (?, ?, ?, ?, ?, ?)",
             [first_name, last_name, mobile, email, hashedPassword, slug]
         );
 

@@ -13,6 +13,7 @@ import materialRouter from "./routes/course_material.route.js";
 import reviewRouter from "./routes/review.route.js";
 import assessmentRouter from "./routes/assessment.route.js";
 import studentRouter from "./routes/student.route.js";
+import companyRouter from "./routes/company.route.js";
 
 dotenv.config();
 
@@ -41,6 +42,7 @@ app.use("/api/std_material",materialRouter)
 app.use("/api/review",reviewRouter)
 app.use("/api/assessment", assessmentRouter)
 app.use("/api/student",studentRouter)
+app.use("/api/company",companyRouter)
 
 const PORT = process.env.PORT || 5000;
 const startServer = async () => {

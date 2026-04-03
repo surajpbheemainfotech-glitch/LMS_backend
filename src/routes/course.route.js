@@ -21,7 +21,7 @@ const courseUpload = createImageUpload("LMS_PROJECT/courses", "course");
 
 
 courseRouter.post("/add", verifyToken,courseUpload.single("thumbnail"), addCourse)
-courseRouter.post("/enroll",enrollStudentInCourse)
+courseRouter.post("/enroll",verifyToken, enrollStudentInCourse)
 
 courseRouter.patch("/update/:slug", verifyToken, updateCourse)
 courseRouter.patch("/update-course-progress/:slug", verifyToken, updateStudentCourseProgress)
@@ -33,6 +33,6 @@ courseRouter.get("/get/:slug",getCourseBySlug)
 courseRouter.get("/courses/:slug", getCoursesByCategorySlug)
 courseRouter.get("/active-courses",verifyToken, getActiveCourses)
 courseRouter.get("/mycourses/:slug",verifyToken, getStudentCourses)
-courseRouter.get("/check-course-progress/:slug", verifyToken, getCourseProgressByCourseSlug)
+courseRouter.get("/check-course-progress/:slug",  getCourseProgressByCourseSlug)
 
 export default courseRouter

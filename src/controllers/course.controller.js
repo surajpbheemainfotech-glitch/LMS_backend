@@ -119,7 +119,7 @@ export const updateCourse = async (req, res) => {
     const { slug } = req.params;
 
     const {
-        title, description, short_description, price, level,
+      title, description, short_description, price, level,
       language, duration, total_lectures, category_name,
     } = req.body;
 
@@ -266,7 +266,7 @@ export const getCoursesByCategorySlug = async (req, res) => {
   }
 
 };
- 
+
 export const getActiveCourses = async (req, res) => {
   try {
 
@@ -293,9 +293,9 @@ export const getActiveCourses = async (req, res) => {
 
 export const enrollStudentInCourse = async (req, res) => {
   try {
-    const {  course_id, amount } = req.body;
+    const { course_id, amount } = req.body;
     const student_id = req.user.id;
-    
+
     if (!student_id) {
       return res.status(400).json({ success: false, message: "Login to enroll course." });
     }
@@ -308,6 +308,7 @@ export const enrollStudentInCourse = async (req, res) => {
       return res.status(400).json({ success: false, message: "Try again later." });
     }
 
+
     const [courseLectures] = await db.execute(
       `SELECT total_lectures FROM courses WHERE id = ?`,
       [course_id]
@@ -317,26 +318,36 @@ export const enrollStudentInCourse = async (req, res) => {
       return res.status(404).json({ success: false, message: "Course not found." });
     }
 
-    const [purchaseResult] = await db.execute(
-      `INSERT INTO purchased_courses 
-       (user_id, course_id, purchased_at, amount, payment_status)
-       VALUES (?, ?, ?, ?, ?)`,
-      [student_id, course_id, new Date(), amount, "paid"]
-    );
+    const [existingCourse] = await db.execute(
+      `SELECT id FROM student_courses WHERE student_id = ?`, [student_id]
+    )
 
-    const purchaseId = purchaseResult.insertId;
+    if (existingCourse.length > 0) {
+      return res.status(400).json({
+        success: false, message: "Already course alloted ."
+      })
+    }
+
+
+
+    await db.execute(
+      `INSERT INTO student_courses 
+       (student_id, course_id, amount, payment_status, enrolled_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [student_id, course_id, amount, "paid", new Date(),]
+    );
 
     await db.execute(
       `INSERT INTO course_progress 
-       (purchase_id, user_id, course_id, total_lessons, progress_percent, status)
+       (student_id, course_id, completed_lectures, total_lectures, progress_percentage, last_accessed)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        purchaseId,
         student_id,
         course_id,
+        JSON.stringify([]),
         courseLectures[0].total_lectures,
         0,
-        "Started"
+        new Date()
       ]
     );
 
@@ -346,7 +357,7 @@ export const enrollStudentInCourse = async (req, res) => {
     });
 
   } catch (error) {
-    console.log(error);
+    console.log(error)
     return res.status(500).json({
       success: false,
       message: "Internal server error."
@@ -370,15 +381,15 @@ export const getStudentCourses = async (req, res) => {
       return res.status(404).json({ success: false, message: "Unauthorized" });
     }
 
-    const userId = checkStudent[0].id;
+    const studentId = checkStudent[0].id;
 
     const [courses] = await db.execute(
       `SELECT c.*
    FROM courses c
-   JOIN purchased_courses pc 
-   ON pc.course_id = c.id
-   WHERE pc.user_id = ?`,
-      [userId]
+   JOIN student_courses sc 
+   ON sc.course_id = c.id
+   WHERE sc.student_id = ?`,
+      [studentId]
     );
 
     if (courses == 0) {
@@ -394,6 +405,7 @@ export const getStudentCourses = async (req, res) => {
     })
 
   } catch (error) {
+    console.log(error)
     return res.status(500).json({
       success: false,
       message: "Internal server error ."
@@ -412,17 +424,18 @@ export const getCourseBySlug = async (req, res) => {
       });
     }
 
-    const [course] = await db.execute(`SELECT 
-      c.id, c.title, c.description, c.short_description,
-      c.price, c.thumbnail, c.level, c.language, c.duration, c.total_lectures, c.slug,
-      cat.name AS category_name,
-      GROUP_CONCAT(cm.title) AS material_titles
-      FROM courses c
-      JOIN categories cat ON c.category_id = cat.id
-      LEFT JOIN course_materials cm ON cm.course_id = c.id
-      WHERE c.slug = ?
-      GROUP BY c.slug
-    `, [slug]);
+    const [course] = await db.execute(`
+     SELECT 
+       c.id, c.title, c.description, c.short_description,
+       c.price, c.thumbnail, c.level, c.language, c.duration, c.total_lectures, c.slug,
+       cat.name AS category_name,
+    GROUP_CONCAT(cm.title) AS material_titles
+    FROM courses c
+    JOIN categories cat ON c.category_id = cat.id
+    LEFT JOIN course_materials cm ON cm.course_id = c.id
+    WHERE c.slug = ?
+    GROUP BY c.id
+`, [slug]);
 
     if (course.length === 0) {
       return res.status(404).json({
@@ -468,7 +481,7 @@ export const updateStudentCourseProgress = async (req, res) => {
   try {
     const { completed_lessons_ids } = req.body;
     const course_slug = req.params.slug;
-    const userId = req.user.id;
+    const studentId = req.user.id;
 
     if (!course_slug) {
       return res.status(400).json({
@@ -485,18 +498,18 @@ export const updateStudentCourseProgress = async (req, res) => {
     }
 
     const [checkCourse] = await db.execute(
-      `SELECT id FROM courses WHERE slug = ?`,[course_slug]
+      `SELECT id FROM courses WHERE slug = ?`, [course_slug]
     )
     const course_id = checkCourse[0].id
     const [progressData] = await db.execute(
       `SELECT 
          c.total_lectures,
-         cp.completed_lessons
+         cp.completed_lectures
        FROM courses c
        JOIN course_progress cp 
          ON cp.course_id = c.id
-       WHERE cp.course_id = ? AND cp.user_id = ?`,
-      [course_id, userId]
+       WHERE cp.course_id = ? AND cp.student_id = ?`,
+      [course_id, studentId]
     );
 
     if (progressData.length === 0) {
@@ -509,7 +522,7 @@ export const updateStudentCourseProgress = async (req, res) => {
     const totalLessons = progressData[0].total_lectures;
     let existingLessons = [];
 
-    const rawLessons = progressData[0].completed_lessons;
+    const rawLessons = progressData[0].completed_lectures;
 
     if (rawLessons) {
       try {
@@ -532,33 +545,31 @@ export const updateStudentCourseProgress = async (req, res) => {
     });
 
     const completedCount = existingLessons.length;
-    const remainingLessons = totalLessons - completedCount;
     const progressPercent = ((completedCount / totalLessons) * 100).toFixed(2);
 
     await db.execute(
       `UPDATE course_progress 
-       SET completed_lessons = ?, 
-           remaining_lessons = ?, 
-           progress_percent = ?, 
-           status = ?
-       WHERE user_id = ? AND course_id = ?`,
+       SET completed_lectures = ?, 
+           progress_percentage = ?, 
+           last_accessed = ?
+       WHERE student_id = ? AND course_id = ?`,
       [
         JSON.stringify(existingLessons),
-        remainingLessons,
         progressPercent,
-        progressPercent == 100 ? "Completed" : "In Progress",
-        userId,
+        new Date(),
+        studentId,
         course_id
       ]
     );
 
     return res.status(200).json({
       success: true,
-      message: "Progress saved."
+      message: "Progress saved.",
+      progress: progressPercent,
+      completed_lessons: existingLessons
     });
 
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       success: false,
       message: "Internal server error."
@@ -568,7 +579,7 @@ export const updateStudentCourseProgress = async (req, res) => {
 
 export const getCourseProgressByCourseSlug = async (req, res) => {
   try {
-    const slug = req.params.id
+    const slug = req.params.slug
 
     if (!slug) {
       return res.status(400).json({
@@ -578,19 +589,20 @@ export const getCourseProgressByCourseSlug = async (req, res) => {
     };
 
     const [checkCourse] = await db.execute(
-      `SELECT id FROM courses slug = ?`,[slug]
+      `SELECT id FROM courses WHERE slug = ?`, [slug]
     )
 
-    if(checkCourse.length === 0){
+    if (checkCourse.length === 0) {
       return res.status(400).json({
         success: false,
-         message: "Invaild course ."})
+        message: "Invaild course ."
+      })
     }
     const courseId = checkCourse[0].id
 
     const [courseProgress] = await db.execute(
       `SELECT 
-          completed_lessons,remaining_lessons, progress_percent, status 
+          completed_lectures, total_lectures, progress_percentage, last_accessed
           FROM course_progress 
           WHERE course_id = ?`,
       [courseId]
@@ -603,9 +615,16 @@ export const getCourseProgressByCourseSlug = async (req, res) => {
       })
     };
 
+    const courseData = courseProgress[0]
+
     return res.status(200).json({
       success: true,
-      progress: courseProgress
+      progress: {
+        completd_lectures: courseData.completed_lectures,
+        total_lectures: courseData.total_lectures,
+        progress: courseData.progress_percentage,
+        last_accessed: courseData.last_accessed
+      }
     })
   } catch (error) {
     return res.status(500).json({

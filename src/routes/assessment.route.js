@@ -12,8 +12,9 @@ import {
 const assessmentRouter = express.Router();
 
 assessmentRouter.post("/add_assessment/:id",verifyToken, insertAssesment )
-assessmentRouter.post("/submit_assessment/:id",verifyToken, submitAssesmentTest)
-assessmentRouter.get("/get_assessment/:id",verifyToken, getCourseAssessment)
+assessmentRouter.post("/submit_assessment/:slug",verifyToken, submitAssesmentTest)
+
+assessmentRouter.get("/get_assessment/:slug",verifyToken, getCourseAssessment)
 assessmentRouter.get("/check_attempts",verifyToken, getScoreAndAttemp)
 assessmentRouter.get("/generate_certificate/:id", getCertificateByUserId)
 

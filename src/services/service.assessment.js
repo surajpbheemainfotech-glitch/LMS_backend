@@ -1,12 +1,12 @@
 import db from "../config/db.js";
 
 
-export const checkAttemptLimit = async (user_id) => {
+export const checkAttemptLimit = async (student_id) => {
     const [result] = await db.execute(
         `SELECT COUNT(*) as count 
          FROM test_attempts 
-         WHERE user_id = ? AND attempt_date = CURRENT_DATE`,
-        [user_id]
+         WHERE student_id = ? AND attempt_date = CURRENT_DATE`,
+        [student_id]
     );
 
     return result[0].count;
@@ -16,14 +16,21 @@ export const getQuestions = async (assessment_ids) => {
 
     const placeholders = assessment_ids.map(() => '?').join(',');
 
-    const [questions] = await db.execute(
-        `SELECT assessment_id, correct_options 
-         FROM assessments 
-         WHERE assessment_id IN (${placeholders})`,
-        assessment_ids.map(Number)
-    );
+    try {
 
-    return questions;
+        const [questions] = await db.execute(
+            `SELECT id, correct_options 
+         FROM assessments 
+         WHERE id IN (${placeholders})`,
+            assessment_ids.map(Number)
+        );
+        return questions;
+
+    } catch (error) {
+        return res.json({ error: error })
+    }
+
+
 };
 
 export const calculateScore = (questions, assessment_ids, answers) => {
@@ -72,33 +79,33 @@ export const calculateScore = (questions, assessment_ids, answers) => {
     return score;
 };
 
-export const saveAttempt = async (user_id, assessment_id, percentage, status) => {
+export const saveAttempt = async (student_id, assessment_id, percentage, status) => {
     await db.execute(
         `INSERT INTO test_attempts 
-        (user_id, assessment_id, attempt_date, score, status)
+        (student_id, assessment_id, attempt_date, score, status)
         VALUES (?, ?, CURRENT_DATE, ?, ?)`,
-        [user_id, assessment_id, percentage, status]
+        [student_id, assessment_id, percentage, status]
     );
 };
 
-export const handleCertificate = async (user_id, course_id, percentage) => {
-  console.log(user_id,course_id, percentage )
+export const handleCertificate = async (student_id, course_id, percentage) => {
+
     if (percentage < 75) return;
 
     const [existingCert] = await db.execute(
         `SELECT id FROM certified_students 
-         WHERE user_id = ? AND course_id = ?`,
-        [user_id, course_id]
+         WHERE student_id = ? AND course_id = ?`,
+        [student_id, course_id]
     );
 
     if (existingCert.length > 0) return;
 
     const [courseResult] = await db.execute(
         `SELECT c.title 
-         FROM purchased_courses pc
+         FROM student_courses pc
          JOIN courses c ON pc.course_id = c.id
-         WHERE pc.user_id = ? AND pc.course_id = ?`,
-        [user_id, course_id]
+         WHERE pc.student_id = ? AND pc.course_id = ?`,
+        [student_id, course_id]
     );
 
     const course_name = courseResult.length > 0
@@ -109,8 +116,8 @@ export const handleCertificate = async (user_id, course_id, percentage) => {
 
     await db.execute(
         `INSERT INTO certified_students 
-        (user_id, course_id, course_name, score, certificate_no)
+        (student_id, course_id, course_name, score, certificate_no)
         VALUES (?, ?, ?, ?, ?)`,
-        [user_id, course_id, course_name, percentage, certificate_no]
+        [student_id, course_id, course_name, percentage, certificate_no]
     );
 };

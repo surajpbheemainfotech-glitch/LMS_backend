@@ -85,7 +85,7 @@ export const getCourseMaterialByCourseSlug = async (req, res) => {
 
     const [checkCourse] = await db.execute(
       `SELECT id FROM courses WHERE slug = ?`,
-      [slug]
+      [courseSlug]
     )
 
     if(checkCourse.length === 0){
@@ -108,6 +108,7 @@ export const getCourseMaterialByCourseSlug = async (req, res) => {
 
     return res.status(200).json({ success: true, material: materialRows })
   } catch (error) {
+    console.log(error)
     return res.status(500).json({ success: false, message: "Internal server error ." })
   }
 }

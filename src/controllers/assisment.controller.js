@@ -24,17 +24,22 @@ export const insertAssesment = async (req, res) => {
             return res.status(400).json({ message: "No questions provided" });
         }
 
+        const randomNumber = Math.floor(Math.random() * 100) + 1;
+        const assessmentSlug = `assessment_${randomNumber}`
+
         const values = assessment_data.map(q => [
             course_id,
             req.user.id,
             q.question,
             JSON.stringify(q.options),
-            JSON.stringify(q.correct_options)
+            JSON.stringify(q.correct_options),
+            q.duration_second,
+            assessmentSlug
         ]);
 
         const query = `
         INSERT INTO assessments 
-        (course_id, user_id, question, options, correct_options)
+        (course_id, created_by, question, options, correct_options, duration_seconds, slug)
         VALUES ?
     `;
 
@@ -76,18 +81,16 @@ export const getCourseAssessment = async (req, res) => {
         }
 
         const [course] = await db.execute(
-            `SELECT id FROM courses slug = ?`,[course_slug]
+            `SELECT id FROM courses WHERE slug = ?`, [course_slug]
         )
 
         let assessment
 
         const query = `
-        SELECT assessment_id, question, options, duration_seconds
+        SELECT id, question, options, duration_seconds, slug
         FROM assessments
         WHERE course_id = ?
     `;
-
-
 
         assessment = await db.query(query, [course[0].id], (err, results) => {
             if (err) {
@@ -112,6 +115,7 @@ export const getCourseAssessment = async (req, res) => {
         })
 
     } catch (error) {
+        console.log(error)
         return res.status(500).json({
             success: false,
             message: "Internal server error ."
@@ -122,10 +126,10 @@ export const getCourseAssessment = async (req, res) => {
 export const submitAssesmentTest = async (req, res) => {
     try {
         const { assessment_ids, answers } = req.body;
-        const course_id = req.params.id
-        const user_id = req.user?.id;
+        const course_slug = req.params.slug
+        const student_id = req.user?.id;
 
-        if (!user_id) {
+        if (!student_id) {
             return res.status(400).json({ success: false, message: "Unauthorized." });
         }
 
@@ -133,7 +137,7 @@ export const submitAssesmentTest = async (req, res) => {
             return res.status(400).json({ success: false, message: "No questions submitted" });
         }
 
-        const attempts = await checkAttemptLimit(user_id);
+        const attempts = await checkAttemptLimit(student_id);
 
         if (attempts >= 2) {
             return res.status(403).json({
@@ -142,6 +146,11 @@ export const submitAssesmentTest = async (req, res) => {
             });
         }
 
+        const [existingCourse] = await db.execute(
+            `SELECT id FROM courses WHERE slug = ?`, [course_slug]
+        )
+
+        const course_id = existingCourse[0].id
         const questions = await getQuestions(assessment_ids);
 
         if (questions.length === 0) {
@@ -157,9 +166,9 @@ export const submitAssesmentTest = async (req, res) => {
         const status = percentage >= 75 ? "PASS" : "FAIL";
 
 
-        await saveAttempt(user_id, assessment_ids[0], percentage, status);
+        await saveAttempt(student_id, assessment_ids[0], percentage, status);
 
-        await handleCertificate(user_id, course_id, percentage);
+        await handleCertificate(student_id, course_id, percentage);
 
         return res.status(200).json({
             success: true,
@@ -179,9 +188,9 @@ export const submitAssesmentTest = async (req, res) => {
 
 export const getScoreAndAttemp = async (req, res) => {
     try {
-        const userId = req.user?.id;
+        const studenetId = req.user?.id;
 
-        if (!userId) {
+        if (!studenetId) {
             return res.status(400).json({
                 success: false,
                 message: "Login please."
@@ -191,8 +200,8 @@ export const getScoreAndAttemp = async (req, res) => {
         const [countResult] = await db.execute(
             `SELECT COUNT(*) as count 
              FROM test_attempts 
-             WHERE user_id = ? AND attempt_date = CURRENT_DATE`,
-            [userId]
+             WHERE student_id = ? AND attempt_date = CURRENT_DATE`,
+            [studenetId]
         );
 
         const attemptsToday = countResult[0].count;
@@ -200,8 +209,8 @@ export const getScoreAndAttemp = async (req, res) => {
         const [highScoreResult] = await db.execute(
             `SELECT MAX(score) as maxScore 
              FROM test_attempts 
-             WHERE user_id = ?`,
-            [userId]
+             WHERE student_id = ?`,
+            [studenetId]
         );
 
         const maxScore = highScoreResult[0].maxScore || 0;
@@ -244,7 +253,7 @@ export const getCertificateByUserId = async (req, res) => {
              FROM certified_students cs
              JOIN users u ON cs.user_id = u.id
              WHERE cs.user_id = ?`,
-               [userId]
+            [userId]
         );
 
         if (certificateDetails.length === 0) {

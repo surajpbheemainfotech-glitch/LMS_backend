@@ -6,6 +6,7 @@ import {
 import categoryRouter from './category.route.js'
 import courseRouter from './course.route.js'
 import userRouter from './user.route.js'
+import companyRouter from './company.route.js'
 
 
 
@@ -24,5 +25,8 @@ adminRouter.use("/course",courseRouter)
 
 //users route
 adminRouter.use("/user",userRouter)
+
+//company route
+adminRouter.use("/company",companyRouter)
 
 export default adminRouter

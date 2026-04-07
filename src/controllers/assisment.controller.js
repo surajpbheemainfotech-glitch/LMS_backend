@@ -6,6 +6,7 @@ import {
     handleCertificate,
     saveAttempt
 } from "../services/service.assessment.js";
+import { error, success } from "../utils/response.js";
 
 export const insertAssesment = async (req, res) => {
     try {
@@ -14,14 +15,11 @@ export const insertAssesment = async (req, res) => {
         const course_id = req.params.id;
 
         if (!course_id) {
-            return res.status(400).json({
-                success: false,
-                message: "Select course first"
-            });
+            return error(res, "Select course first", 400)
         }
 
         if (!assessment_data || assessment_data.length === 0) {
-            return res.status(400).json({ message: "No questions provided" });
+            return error(res, "No questions provided", 400)
         }
 
         const randomNumber = Math.floor(Math.random() * 100) + 1;
@@ -46,25 +44,13 @@ export const insertAssesment = async (req, res) => {
         const result = await db.query(query, [values], (err, result) => {
             if (err) {
                 console.error(err);
-                return res.status(500).json({
-                    success: false,
-                    message: "DB Error"
-                });
+                return error(res, "DB Error", 500)
             }
         });
 
-        return res.json({
-            success: true,
-            message: "Questions added successfully",
-            inserted: result.affectedRows
-        });
-
+        return success(res, "Questions added successfully", { inserted: result.affectedRows }, 200)
     } catch (error) {
-        console.log(error.message)
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error ."
-        })
+        return error(res, "Internal server Error", 500)
     }
 }
 
@@ -74,10 +60,7 @@ export const getCourseAssessment = async (req, res) => {
         const course_slug = req.params.slug
 
         if (!course_slug) {
-            return res.status(400).json({
-                success: false,
-                message: "Select course first"
-            });
+            return error(res, "Select course first", 400)
         }
 
         const [course] = await db.execute(
@@ -103,23 +86,13 @@ export const getCourseAssessment = async (req, res) => {
         });
 
         if (!assessment.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "Assestement not avaiable ."
-            })
+            return error(res, "Assestement not avaiable .", 404)
         }
 
-        return res.status(200).json({
-            success: true,
-            assessment: assessment
-        })
+        return success(res, { assessment: assessment }, 200)
 
     } catch (error) {
-        console.log(error)
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error ."
-        })
+        return error(res, "Internal server error .", 500)
     }
 }
 
@@ -130,20 +103,17 @@ export const submitAssesmentTest = async (req, res) => {
         const student_id = req.user?.id;
 
         if (!student_id) {
-            return res.status(400).json({ success: false, message: "Unauthorized." });
+            return error(res, "Unauthorized.", 400)
         }
 
         if (!assessment_ids || assessment_ids.length === 0) {
-            return res.status(400).json({ success: false, message: "No questions submitted" });
+            return error(res, "No questions submitted", 400)
         }
 
         const attempts = await checkAttemptLimit(student_id);
 
         if (attempts >= 2) {
-            return res.status(403).json({
-                success: false,
-                message: "Max 2 attempts per day reached"
-            });
+            return error(res, "Max 2 attempts per day reached", 403)
         }
 
         const [existingCourse] = await db.execute(
@@ -154,10 +124,7 @@ export const submitAssesmentTest = async (req, res) => {
         const questions = await getQuestions(assessment_ids);
 
         if (questions.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "Invalid questions"
-            });
+            return error(res, "Invalid questions", 404)
         }
 
         const score = calculateScore(questions, assessment_ids, answers);
@@ -170,19 +137,16 @@ export const submitAssesmentTest = async (req, res) => {
 
         await handleCertificate(student_id, course_id, percentage);
 
-        return res.status(200).json({
-            success: true,
-            score: percentage,
-            total: questions.length,
-            status
-        });
+        return success(
+            res,
+            {
+                score: percentage,
+                total: questions.length,
+                status
+            }, 200)
 
     } catch (err) {
-        console.error(err);
-        return res.status(500).json({
-            success: false,
-            message: "Server Error"
-        });
+        return error(res, "Internal server error .", 500)
     }
 };
 
@@ -191,10 +155,7 @@ export const getScoreAndAttemp = async (req, res) => {
         const studenetId = req.user?.id;
 
         if (!studenetId) {
-            return res.status(400).json({
-                success: false,
-                message: "Login please."
-            });
+            return error(res, "Login please.", 400)
         }
 
         const [countResult] = await db.execute(
@@ -217,22 +178,21 @@ export const getScoreAndAttemp = async (req, res) => {
 
         const isBlocked = maxScore >= 75;
 
-        return res.status(200).json({
-            success: true,
-            attempts: attemptsToday,
-            maxScore,
-            isBlocked,
-            message: isBlocked
+        return success(
+            res,
+            isBlocked
                 ? "You already scored 75%+. Further attempts are blocked."
-                : "You can attempt the test."
-        });
+                : "You can attempt the test.",
+            {
+                attempts: attemptsToday,
+                maxScore,
+                isBlocked
+            }, 200)
+
+
 
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error."
-        });
+        return error(res, "Internal server error ", 500)
     }
 };
 
@@ -241,7 +201,7 @@ export const getCertificateByUserId = async (req, res) => {
     const userId = req.params.id || 12
 
     if (!userId) {
-        return res.status(400).json({ success: false, message: "Unauthorized." });
+        return error( res, "Unauthorized.", 400 );
     }
 
     try {
@@ -257,22 +217,12 @@ export const getCertificateByUserId = async (req, res) => {
         );
 
         if (certificateDetails.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "No records are avaible ."
-            })
+            return error(res, "No records are avaible .", 404 )
         };
 
-        return res.status(200).json({
-            success: true,
-            userData: certificateDetails
-        })
-
+        return success(res, {userData: certificateDetails}, 200)
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error ."
-        })
+        return error(res, "Internal server error .", 500)
     }
 }

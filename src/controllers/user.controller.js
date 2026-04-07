@@ -1,16 +1,14 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import db from "../config/db.js";
+import { error, success } from "../utils/response.js";
 
 export const addAdmins = async (req, res) => {
 
   const { first_name, last_name, mobile, email, password, role, description } = req.body;
 
   if (!first_name || !last_name || !mobile || !email || !password || !role || !description) {
-    return res.status(400).json({
-      success: false,
-      message: "All fields are required",
-    });
+    return error(res, "All fields are required", 400)
   }
   try {
 
@@ -19,10 +17,7 @@ export const addAdmins = async (req, res) => {
     ]);
 
     if (existing.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already registered",
-      });
+      return error(res, "Email already registered", 400)
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -41,18 +36,9 @@ export const addAdmins = async (req, res) => {
       `INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)`,
       [result.insertId, roles.insertId]
     )
-
-    return res.status(201).json({
-      success: true,
-      message: "User Registered Successfully",
-      userId: result.insertId,
-    });
+    return success(res, "User Registered Successfully", { userId: result.insertId }, 201)
   } catch (error) {
-    console.error("Signup Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
+    return error(res, "Internal server error .", 500)
   }
 };
 
@@ -61,29 +47,25 @@ export const adminLogin = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({
-      success: false,
-      message: "Email and Password are required",
-    });
+    return error(res, "Email and Password are required", 400)
   }
 
   try {
     const [rows] = await db.execute(
       `SELECT 
-          u.id, u.first_name, u.last_name, u.email, u.password,
-          r.id AS role_id, r.role_name
-       FROM users u
-       JOIN user_roles ur ON u.id = ur.user_id
-       JOIN roles r ON ur.role_id = r.id
-       WHERE u.email = ?`,
+      u.id, u.first_name, u.last_name, u.email, u.password,
+      r.id AS role_id, r.role_name,
+      c.slug AS company_slug
+   FROM users u
+   JOIN user_roles ur ON u.id = ur.user_id
+   JOIN roles r ON ur.role_id = r.id
+   LEFT JOIN companies c ON c.email = u.email
+   WHERE u.email = ?`,
       [email]
     );
 
     if (rows.length === 0) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid Email",
-      });
+      return error(res, "Invalid Email", 401)
     }
 
     const user = rows[0];
@@ -91,17 +73,11 @@ export const adminLogin = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid Password",
-      });
+      return error(res, "Invalid Password", 401)
     }
 
     if (!process.env.JWT_SECRET) {
-      return res.status(500).json({
-        success: false,
-        message: "JWT_SECRET missing in env",
-      });
+      return error(res, "JWT_SECRET missing in env", 500)
     }
 
     const token = jwt.sign(
@@ -119,23 +95,18 @@ export const adminLogin = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Login Successful",
+    return success(res, "Login Successful", {
       token,
       user: {
         id: user.id,
         first_name: user.first_name,
         email: user.email,
-        role: user.role,
-      },
+        role: user.role_name,
+        companySlug: user.company_slug, 
+      }
     });
   } catch (error) {
-    console.error("Login Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
+    return error(res, "Internal server error .", 500)
   }
 };
 
@@ -149,16 +120,9 @@ export const adminLogout = (req, res) => {
       sameSite: isProd ? "None" : "Strict",
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Logged Out Successfully",
-    });
+    return success(res, "Logged Out Successfully", 200)
   } catch (error) {
-    console.error("Logout Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
+    return error(res, "Internal server error .", 500)
   }
 };
 
@@ -177,21 +141,14 @@ export const getAllUser = async (req, res) => {
 `);
 
     if (userRows.length == 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Users are not avaiable ."
-      });
+      return error(res, "Users are not avaiable .", 400)
     }
 
     const users = userRows;
-
-    return res.status(200).json({ success: true, users: users })
+    return success(res, { users: users }, 200)
 
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error !"
-    });
+    return error(res, "Internal server error !", 500)
   }
 }
 
@@ -201,10 +158,7 @@ export const getUserById = async (req, res) => {
     const { id } = req.params
 
     if (!id) {
-      return res.status(404).json({
-        success: false,
-        message: "Login please ."
-      })
+      return error(res, "Login please .", 404)
     }
 
     const [user] = await db.execute(
@@ -214,22 +168,13 @@ export const getUserById = async (req, res) => {
     );
 
     if (user.length == 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Login please ."
-      })
+      return error(res, "Login please .", 404)
     }
 
-    return res.status(200).json({
-      success: true,
-      user: user
-    })
+    return success(res, { user: user }, 200)
 
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error ."
-    })
+    return error(res, "Internal server error .", 500)
   }
 }
 
@@ -242,24 +187,16 @@ export const removeAdmins = async (req, res) => {
       [id])
 
     if (existing.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Admin not avaiable ."
-      })
+      return error(res, "Unauthorized .", 402)
     }
 
     await db.execute(`DELETE FROM users WHERE id = ?`,
       [id])
 
-    return res.status(200).json({
-      success: true,
-      message: "Admin remove successfully ."
-    })
+    return success(res, "Admin remove successfully .", 200)
+
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error ."
-    })
+    return error(res, "Internal server error .", 500)
   }
 }
 

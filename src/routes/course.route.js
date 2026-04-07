@@ -27,7 +27,6 @@ courseRouter.patch("/update/:slug", verifyToken, updateCourse)
 courseRouter.patch("/update-course-progress/:slug", verifyToken, updateStudentCourseProgress)
 courseRouter.delete("/delete/:slug", verifyToken, deleteCourse)
 
-
 courseRouter.get("/get",getCourses)
 courseRouter.get("/get/:slug",getCourseBySlug)
 courseRouter.get("/courses/:slug", getCoursesByCategorySlug)

@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import db from '../config/db.js';
+import { error, success } from "../utils/response.js";
 
 dotenv.config();
 
@@ -10,10 +11,7 @@ export const adminLogin = async (req, res) => {
     let { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and Password are required",
-      });
+      return error(res, "Email and Password are required", 400)
     }
 
     const [rows] = await db.execute(
@@ -39,17 +37,11 @@ export const adminLogin = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid Password",
-      });
+      return error(res, "Invalid Password", 401)
     }
 
     if (!process.env.JWT_SECRET) {
-      return res.status(500).json({
-        success: false,
-        message: "JWT_SECRET missing in env",
-      });
+      return error(res, "JWT_SECRET missing in env", 500)
     }
 
     const token = jwt.sign(
@@ -72,9 +64,7 @@ export const adminLogin = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Login Successful",
+    return success(res, "Login Successful", {
       token,
       user: {
         id: user.id,
@@ -82,14 +72,11 @@ export const adminLogin = async (req, res) => {
         email: user.email,
         role: user.role_name,
         role_id: user.role_id,
-      },
-    });
+      }
+    }, 200)
+
   } catch (error) {
-    console.error("Login Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
+    return error(res, "Internal server error ", 500)
   }
 };
 
@@ -101,17 +88,10 @@ export const adminLogout = (req, res) => {
       secure: false,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Logged Out Successfully",
-    });
-
+    return success(res, "Logged Out Successfully", 200)
   } catch (error) {
     console.error(" Logout Error:", error);
+    return error(res, "Internal server error .", 500)
 
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
   }
 }; 

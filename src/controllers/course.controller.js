@@ -1,6 +1,7 @@
 import db from "../config/db.js";
 import cloudinary from "../config/cloudinaryConfig.js";
 import { createSlug } from "../services/service.slug.generator.js";
+import { error, success } from "../utils/response.js";
 
 export const addCourse = async (req, res) => {
   try {
@@ -13,10 +14,7 @@ export const addCourse = async (req, res) => {
     const thumbnail_public_id = req.file?.filename || null;
 
     if (!thumbnail) {
-      return res.status(400).json({
-        success: false,
-        message: "Please select image",
-      });
+      return error(res, "Please select image", 400)
     }
 
     if (!title || !description || !price || !category_id) {
@@ -24,10 +22,7 @@ export const addCourse = async (req, res) => {
         await cloudinary.uploader.destroy(thumbnail_public_id);
       }
 
-      return res.status(400).json({
-        success: false,
-        message: "Required fields missing",
-      });
+      return error(res, "Required fields missing", 400)
     }
 
     const [category] = await db.execute(
@@ -40,10 +35,8 @@ export const addCourse = async (req, res) => {
         await cloudinary.uploader.destroy(thumbnail_public_id);
       }
 
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+      return error(res, "Category not found", 404)
+
     }
 
     const courseSlug = createSlug(title)
@@ -59,17 +52,19 @@ export const addCourse = async (req, res) => {
       ]
     );
 
-    return res.status(201).json({
-      success: true,
-      message: "Course added successfully",
-      data: {
-        title,
-        courseSlug,
-        thumbnail,
-        thumbnail_public_id,
-      },
-    });
-  } catch (error) {
+    return success(
+      res,
+      "Course added successfully",
+      {
+        data: {
+          title,
+          courseSlug,
+          thumbnail,
+          thumbnail_public_id,
+        }
+      }, 200)
+
+  } catch (err) {
     if (req.file?.filename) {
       try {
         await cloudinary.uploader.destroy(req.file.filename);
@@ -79,10 +74,7 @@ export const addCourse = async (req, res) => {
     }
 
     console.error("Add Course Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error?.message || "Server Error",
-    });
+    return error(res, "Internal server error ", 500)
   }
 };
 
@@ -100,17 +92,10 @@ export const getCourses = async (req, res) => {
       ORDER BY courses.created_at DESC
     `);
 
-    res.status(200).json({
-      success: true,
-      courses,
-    });
+    return success(res, { courses: courses }, 200)
 
-  } catch (error) {
-    console.error("Get Courses Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
+  } catch (err) {
+    return error(res, "Internla server error", 500)
   }
 };
 
@@ -126,10 +111,8 @@ export const updateCourse = async (req, res) => {
     if (
       !title || !description || !short_description || !price || !level || !language ||
       !duration || !total_lectures || !category_name) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required",
-      });
+
+      return error(res, "All fields are required", 400)
     }
 
     const [existing] = await db.execute(
@@ -138,10 +121,7 @@ export const updateCourse = async (req, res) => {
     );
 
     if (existing.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Course not found",
-      });
+      return error(res, "Course not found", 404)
     }
 
     const [category] = await db.execute(
@@ -150,10 +130,7 @@ export const updateCourse = async (req, res) => {
     );
 
     if (category.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+      return error(res, "Category not found", 404)
     }
 
     await db.execute(
@@ -167,16 +144,10 @@ export const updateCourse = async (req, res) => {
       ]
     );
 
-    return res.status(200).json({
-      success: true,
-      message: "Course updated successfully",
-    });
-  } catch (error) {
-    console.error("Update Course Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error?.message || "Server Error",
-    });
+    return success(res, "Course updated successfully", 200)
+
+  } catch (err) {
+    return error(res, "Internal server error ", 500)
   }
 };
 
@@ -190,10 +161,7 @@ export const deleteCourse = async (req, res) => {
     );
 
     if (existing.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Course not found",
-      });
+      return error(res, "Course not found", 404)
     }
 
     const thumbnailPublicId = existing[0].thumbnail_public_id;
@@ -205,16 +173,10 @@ export const deleteCourse = async (req, res) => {
 
     await db.execute("DELETE FROM courses WHERE slug = ?", [slug]);
 
-    return res.status(200).json({
-      success: true,
-      message: "Course deleted successfully",
-    });
-  } catch (error) {
-    console.error("Delete Course Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error?.message || "Server Error",
-    });
+    return success(res, "Course deleted successfully", 200)
+
+  } catch (err) {
+    return error(res, "Internal server error ", 500)
   }
 };
 
@@ -225,7 +187,7 @@ export const getCoursesByCategorySlug = async (req, res) => {
 
 
     if (!category_slug) {
-      return res.status(400).json({ success: false, message: "Please select category" })
+      return error(res, "Please select category", 400)
     }
 
     const [checkCategory] = await db.execute(
@@ -233,7 +195,7 @@ export const getCoursesByCategorySlug = async (req, res) => {
     )
 
     if (checkCategory.length === 0) {
-      return res.status(404).json({ success: false, message: "Category was present ." })
+      return error(res, "Category was present .", 404)
     }
 
     const category_id = checkCategory[0].id
@@ -251,18 +213,15 @@ export const getCoursesByCategorySlug = async (req, res) => {
     );
 
     if (courseRows.length == 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No courses are available for this category"
-      })
+      return error(res, "No courses are available for this category", 404)
     }
 
     const courses = courseRows;
 
-    return res.status(200).json({ success: true, courses: courses })
+    return success(res, { courses: courses })
 
-  } catch (error) {
-    return res.status(500).json({ success: false, message: "Internal server error !" })
+  } catch (err) {
+    return error(res, "Internal server error !", 500)
   }
 
 };
@@ -281,13 +240,14 @@ export const getActiveCourses = async (req, res) => {
     );
 
     if (courseRows.length === 0) {
-      return res.status(404).json({ success: false, message: "No active course are avaiable ." })
+      return error(res, "No active course are avaiable .", 404)
     }
 
     const activeCourses = courseRows;
-    return res.status(200).json({ success: true, activeCourses: activeCourses })
-  } catch (error) {
-    return res.status(500).json({ success: false, message: "Internal server error !" })
+    return success(res, { activeCourses: activeCourses })
+
+  } catch (err) {
+    return error(res, "Internal server error !", 500)
   }
 };
 
@@ -297,15 +257,15 @@ export const enrollStudentInCourse = async (req, res) => {
     const student_id = req.user.id;
 
     if (!student_id) {
-      return res.status(400).json({ success: false, message: "Login to enroll course." });
+      return error(res, "Login to enroll course.", 400)
     }
 
     if (!course_id) {
-      return res.status(400).json({ success: false, message: "Please select course." });
+      return error(res, "Please select course.", 400)
     }
 
     if (!amount) {
-      return res.status(400).json({ success: false, message: "Try again later." });
+      return error(res, "Try again later.", 400)
     }
 
 
@@ -315,7 +275,7 @@ export const enrollStudentInCourse = async (req, res) => {
     );
 
     if (courseLectures.length === 0) {
-      return res.status(404).json({ success: false, message: "Course not found." });
+      return error(res, "Course not found.", 404)
     }
 
     const [existingCourse] = await db.execute(
@@ -323,12 +283,8 @@ export const enrollStudentInCourse = async (req, res) => {
     )
 
     if (existingCourse.length > 0) {
-      return res.status(400).json({
-        success: false, message: "Already course alloted ."
-      })
+      return error(res, "Already course alloted .", 400)
     }
-
-
 
     await db.execute(
       `INSERT INTO student_courses 
@@ -351,17 +307,10 @@ export const enrollStudentInCourse = async (req, res) => {
       ]
     );
 
-    return res.status(201).json({
-      success: true,
-      message: "Enrolled Successfully."
-    });
+    return success(res, "Enrolled Successfully.", 201)
 
-  } catch (error) {
-    console.log(error)
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error."
-    });
+  } catch (err) {
+    return error(res, "Internal server error", 500)
   }
 };
 
@@ -370,46 +319,37 @@ export const getStudentCourses = async (req, res) => {
     const slug = req.params.slug;
 
     if (!slug) {
-      return res.status(402).json({ success: false, message: "Please login first . " })
+      return error(res, "Please login first.", 400);
     }
 
     const [checkStudent] = await db.execute(
-      `SELECT id FROM students WHERE slug = ? `, [slug]
-    )
+      `SELECT id FROM students WHERE slug = ?`, [slug]
+    );
 
     if (checkStudent.length === 0) {
-      return res.status(404).json({ success: false, message: "Unauthorized" });
+      return error(res, "Unauthorized", 404);
     }
 
     const studentId = checkStudent[0].id;
 
     const [courses] = await db.execute(
       `SELECT c.*
-   FROM courses c
-   JOIN student_courses sc 
-   ON sc.course_id = c.id
-   WHERE sc.student_id = ?`,
+       FROM courses c
+       JOIN student_courses sc 
+       ON sc.course_id = c.id
+       WHERE sc.student_id = ?`,
       [studentId]
     );
 
-    if (courses == 0) {
-      return res.status(400).json({
-        success: false,
-        message: "NO course is enrolled by user ."
-      })
+    if (courses.length === 0) {
+      return error(res, "No course enrolled by user.", 404);
     }
 
-    return res.status(200).json({
-      success: true,
-      courses: courses
-    })
+    return success(res, { courses }, 200);
 
-  } catch (error) {
-    console.log(error)
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error ."
-    })
+  } catch (err) {
+    console.log(err);
+    return error(res, "Internal server error.", 500);
   }
 };
 
@@ -418,10 +358,7 @@ export const getCourseBySlug = async (req, res) => {
     const { slug } = req.params;
 
     if (!slug) {
-      return res.status(400).json({
-        success: false,
-        message: "Selected course are not available."
-      });
+      return error(res, "Selected course is not available.", 400);
     }
 
     const [course] = await db.execute(`
@@ -429,19 +366,16 @@ export const getCourseBySlug = async (req, res) => {
        c.id, c.title, c.description, c.short_description,
        c.price, c.thumbnail, c.level, c.language, c.duration, c.total_lectures, c.slug,
        cat.name AS category_name,
-    GROUP_CONCAT(cm.title) AS material_titles
-    FROM courses c
-    JOIN categories cat ON c.category_id = cat.id
-    LEFT JOIN course_materials cm ON cm.course_id = c.id
-    WHERE c.slug = ?
-    GROUP BY c.id
-`, [slug]);
+       GROUP_CONCAT(cm.title) AS material_titles
+     FROM courses c
+     JOIN categories cat ON c.category_id = cat.id
+     LEFT JOIN course_materials cm ON cm.course_id = c.id
+     WHERE c.slug = ?
+     GROUP BY c.id
+    `, [slug]);
 
     if (course.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Course not found"
-      });
+      return error(res, "Course not found", 404);
     }
 
     const [avgResult] = await db.execute(
@@ -460,20 +394,16 @@ export const getCourseBySlug = async (req, res) => {
       [course[0].id]
     );
 
-    return res.json({
-      success: true,
-      data: course[0],
+    return success(res, "Course fetched successfully", {
+      course: course[0],
       avgRating: avgResult[0]?.avgRating || 0,
       totalReviews: reviews.length,
-      reviews: reviews
-    });
+      reviews
+    }, 200);
 
-  } catch (error) {
-    console.log("error ", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error."
-    });
+  } catch (err) {
+    console.log("error", err);
+    return error(res, "Internal server error.", 500);
   }
 };
 
@@ -484,23 +414,19 @@ export const updateStudentCourseProgress = async (req, res) => {
     const studentId = req.user.id;
 
     if (!course_slug) {
-      return res.status(400).json({
-        success: false,
-        message: "Please select course."
-      });
+      return error(res, "Please select course.", 400);
     }
 
     if (!completed_lessons_ids || completed_lessons_ids.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Please send ids."
-      });
+      return error(res, "Please send lesson ids.", 400);
     }
 
     const [checkCourse] = await db.execute(
       `SELECT id FROM courses WHERE slug = ?`, [course_slug]
-    )
-    const course_id = checkCourse[0].id
+    );
+
+    const course_id = checkCourse[0].id;
+
     const [progressData] = await db.execute(
       `SELECT 
          c.total_lectures,
@@ -513,10 +439,7 @@ export const updateStudentCourseProgress = async (req, res) => {
     );
 
     if (progressData.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Course progress not found."
-      });
+      return error(res, "Course progress not found.", 404);
     }
 
     const totalLessons = progressData[0].total_lectures;
@@ -562,74 +485,61 @@ export const updateStudentCourseProgress = async (req, res) => {
       ]
     );
 
-    return res.status(200).json({
-      success: true,
-      message: "Progress saved.",
+    return success(res, "Progress saved.", {
       progress: progressPercent,
       completed_lessons: existingLessons
-    });
+    }, 200);
 
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error."
-    });
+  } catch (err) {
+    return error(res, "Internal server error.", 500);
   }
 };
 
 export const getCourseProgressByCourseSlug = async (req, res) => {
   try {
-    const slug = req.params.slug
+    const slug = req.params.slug;
 
     if (!slug) {
-      return res.status(400).json({
-        success: false,
-        message: "This course is not available ."
-      })
-    };
+      return error(res, "This course is not available.", 400);
+    }
 
     const [checkCourse] = await db.execute(
       `SELECT id FROM courses WHERE slug = ?`, [slug]
-    )
+    );
 
     if (checkCourse.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invaild course ."
-      })
+      return error(res, "Invalid course.", 404);
     }
-    const courseId = checkCourse[0].id
+
+    const courseId = checkCourse[0].id;
 
     const [courseProgress] = await db.execute(
       `SELECT 
-          completed_lectures, total_lectures, progress_percentage, last_accessed
-          FROM course_progress 
-          WHERE course_id = ?`,
+          completed_lectures, 
+          total_lectures, 
+          progress_percentage, 
+          last_accessed
+       FROM course_progress 
+       WHERE course_id = ?`,
       [courseId]
     );
 
-    if (courseProgress.length == 0) {
-      return res.status(404).json({
-        success: false,
-        message: "This course is not available ."
-      })
-    };
+    if (courseProgress.length === 0) {
+      return error(res, "Course progress not found.", 404);
+    }
 
-    const courseData = courseProgress[0]
+    const courseData = courseProgress[0];
 
-    return res.status(200).json({
-      success: true,
+    return success(res, "Course progress fetched successfully", {
       progress: {
-        completd_lectures: courseData.completed_lectures,
+        completed_lectures: courseData.completed_lectures,
         total_lectures: courseData.total_lectures,
         progress: courseData.progress_percentage,
         last_accessed: courseData.last_accessed
       }
-    })
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error ."
-    })
+    }, 200);
+
+  } catch (err) {
+    return error(res, "Internal server error.", 500);
   }
 };

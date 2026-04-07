@@ -1,6 +1,7 @@
 import db from "../config/db.js";
 import cloudinary from "../config/cloudinaryConfig.js";
 import { createSlug } from "../services/service.slug.generator.js";
+import { error, success } from "../utils/response.js";
 
 export const addCategory = async (req, res) => {
   try {
@@ -11,17 +12,11 @@ export const addCategory = async (req, res) => {
         await cloudinary.uploader.destroy(req.file.filename);
       }
 
-      return res.status(400).json({
-        success: false,
-        message: "Category name is required",
-      });
+      return error(res, "Category name is required", 400)
     }
 
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "Please select image",
-      });
+      return error(res, "Please select image", 400)
     }
 
     const [existing] = await db.execute(
@@ -34,29 +29,27 @@ export const addCategory = async (req, res) => {
         await cloudinary.uploader.destroy(req.file.filename);
       }
 
-      return res.status(400).json({
-        success: false,
-        message: "Category already exists",
-      });
+      return error(res, "Category already exists", 400)
     }
 
     const catergorySlug = createSlug(name)
 
     await db.execute(
       "INSERT INTO categories (name, icon, icon_public_id, slug, created_by) VALUES (?, ?, ?, ?, ?)",
-      [name, req.file.path, req.file.filename, catergorySlug, req.user.id ]
+      [name, req.file.path, req.file.filename, catergorySlug, req.user.id]
     );
 
-    return res.status(201).json({
-      success: true,
-      message: "Category added successfully",
-      data: {
-        name,
-        catergorySlug,
-        icon: req.file.path,
-        icon_public_id: req.file.filename,
-      },
-    });
+    return success(
+      res,
+      "Category added successfully",
+      {
+        data: {
+          name,
+          catergorySlug,
+          icon: req.file.path,
+          icon_public_id: req.file.filename,
+        }
+      }, 201)
   } catch (error) {
     if (req.file?.filename) {
       try {
@@ -66,12 +59,7 @@ export const addCategory = async (req, res) => {
       }
     }
 
-    console.error("Add Category Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: error?.message || "Server Error",
-    });
+    return error(res, "Internal Server Error", 500)
   }
 };
 
@@ -89,17 +77,10 @@ export const getCategories = async (req, res) => {
     ORDER BY categories.created_at DESC
 `);
 
-    res.status(200).json({
-      success: true,
-      categories,
-    });
+    return success(res, { categories }, 200)
 
   } catch (error) {
-    console.error("Get Categories Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
+    return error(res, "Internal Server Error", 500)
   }
 };
 
@@ -109,10 +90,7 @@ export const updateCategory = async (req, res) => {
     const { name } = req.body;
 
     if (!name) {
-      return res.status(400).json({
-        success: false,
-        message: "Category name is required",
-      });
+      return error(res, "Category name is required", 400)
     }
 
     const [existingCategory] = await db.execute(
@@ -121,10 +99,7 @@ export const updateCategory = async (req, res) => {
     );
 
     if (existingCategory.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+      return error(res, "Category not found", 404)
     }
 
     const [duplicate] = await db.execute(
@@ -133,10 +108,7 @@ export const updateCategory = async (req, res) => {
     );
 
     if (duplicate.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Category name already exists",
-      });
+      return error(res, "Category name already exists", 400)
     }
 
     await db.execute(
@@ -144,18 +116,11 @@ export const updateCategory = async (req, res) => {
       [name, id]
     );
 
-    return res.status(200).json({
-      success: true,
-      message: "Category updated successfully",
-    });
+    return success(res, "Category updated successfully", 200)
 
   } catch (error) {
     console.error("Update Category Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: error?.message || "Server Error",
-    });
+    return error(res, "Internal server error ", 500)
   }
 };
 
@@ -169,10 +134,7 @@ export const deleteCategory = async (req, res) => {
     );
 
     if (existingCategory.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+      return error(res, "Category not found", 404)
     }
 
     const publicId = existingCategory[0].icon_public_id;
@@ -184,15 +146,9 @@ export const deleteCategory = async (req, res) => {
 
     await db.execute("DELETE FROM categories WHERE slug = ?", [slug]);
 
-    return res.status(200).json({
-      success: true,
-      message: "Category deleted successfully",
-    });
+    return success(res, "Category deleted successfully", 200)
+  
   } catch (error) {
-    console.error("Delete Category Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error?.message || "Server Error",
-    });
+    return error(res, "Internal server error ", 500)
   }
 };

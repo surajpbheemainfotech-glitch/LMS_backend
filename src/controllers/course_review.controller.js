@@ -1,4 +1,5 @@
 import db from "../config/db.js"
+import { error, success } from "../utils/response.js"
 
 export const addReview = async (req, res) => {
     try {
@@ -7,17 +8,11 @@ export const addReview = async (req, res) => {
         const userId = req.user.id
 
         if (!id) {
-            return res.status(400).json({
-                success: false,
-                message: "Select course first."
-            })
+            return error(res, "Select course first.", 400)
         }
 
         if (!rating || !review_text) {
-            return res.status(400).json({
-                success: false,
-                message: "Rating and description required."
-            })
+            return error(res, "Rating and description required.", 400)
         }
 
         const [course] = await db.execute(
@@ -26,10 +21,7 @@ export const addReview = async (req, res) => {
         )
 
         if (course.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "Course not available."
-            })
+            return error(res, "Course not available.", 404)
         }
 
         const [existingReview] = await db.execute(
@@ -38,10 +30,7 @@ export const addReview = async (req, res) => {
         )
 
         if (existingReview.length > 0) {
-            return res.status(400).json({
-                success: false,
-                message: "You have already reviewed this course."
-            })
+            return error(res, "You have already reviewed this course.", 400)
         }
 
         const now = new Date()
@@ -53,17 +42,10 @@ export const addReview = async (req, res) => {
             [id, userId, rating, review_text, now, now]
         )
 
-        return res.status(201).json({
-            success: true,
-            message: "Review added successfully."
-        })
+        return success(res, "Review added successfully.", 200)
 
-    } catch (error) {
-        console.error(error)
-        return res.status(500).json({
-            success: false,
-            message: "Server error."
-        })
+    } catch (err) {
+        return error(res, "Internal server error ", 500)
     }
 }
 
@@ -72,10 +54,7 @@ export const deleteReview = async (req, res) => {
         const { id } = req.params
 
         if (!id) {
-            return res.status(404).json({
-                success: false,
-                message: "Review not available"
-            })
+            return error(res, "Review not available", 404)
         }
 
         const [existingReview] = await db.execute(`
@@ -85,23 +64,15 @@ export const deleteReview = async (req, res) => {
         )
 
         if (existingReview.length == 0) {
-            return res.status(404).json({
-                success: false,
-                message: "Review not available"
-            })
+            return error(res, "Review not available", 404)
         }
 
         await db.execute(`DELETE FROM course_reviews WHERE id = ?`, [id])
 
-        return res.status(200).json({
-            success: true,
-            message: "REview removed successfully ."
-        })
+        return success(res, "Review removed successfully .", 200)
+
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error ."
-        })
+        return error(res, "Internal server error ", 500)
     }
 }
 
@@ -110,10 +81,7 @@ export const getCourseReviewByCourseId = async (req, res) => {
         const courseId = req.params.id;
 
         if (!courseId) {
-            return res.status(400).json({
-                success: false,
-                message: "Course not available."
-            });
+            return error(res, "Course not available.", 400)
         }
 
         const [avgResult] = await db.execute(
@@ -133,23 +101,19 @@ export const getCourseReviewByCourseId = async (req, res) => {
         );
 
         if (reviews.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "No reviews found."
-            });
+            return error(res, "No reviews found.", 404)
         }
 
-        return res.status(200).json({
-            success: true,
-            avgRating: avgResult[0].avgRating || 0,
-            totalReviews: reviews.length,
-            reviews: reviews
-        });
+        return success(
+            res,
+            {
+                avgRating: avgResult[0].avgRating || 0,
+                totalReviews: reviews.length,
+                reviews: reviews
+            },
+            200)
 
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error."
-        });
+    } catch (err) {
+        return error(res, "Internal server error ", 500)
     }
 };

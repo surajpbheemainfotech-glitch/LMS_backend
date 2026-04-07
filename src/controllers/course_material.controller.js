@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import { createSlug } from "../services/service.slug.generator.js";
+import { error, success } from "../utils/response.js";
 
 export const addCourseMaterial = async (req, res) => {
   try {
@@ -9,25 +10,16 @@ export const addCourseMaterial = async (req, res) => {
     const url_public_id = req.file?.filename || null;
 
     if (!title || !material_type || !course_title) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required.",
-      });
+      return error(res, "All fields are required.", 400)
     }
 
     if (material_type === "pdf") {
       if (!file_url) {
-        return res.status(400).json({
-          success: false,
-          message: "Please select a PDF file.",
-        });
+        return error(res, "Please select a PDF file.", 400)
       }
     } else {
       if (!link) {
-        return res.status(400).json({
-          success: false,
-          message: "Please enter YouTube link.",
-        });
+         return error(res, "Please enter YouTube link.", 400)
       }
     }
 
@@ -61,17 +53,13 @@ export const addCourseMaterial = async (req, res) => {
       ]
     );
 
-    return res.status(201).json({
-      success: true,
-      message: `Material added successfully for ${course_title}`,
-      file_url: material_type === "pdf" ? file_url : null,
-    });
-  } catch (error) {
-    console.error("addCourseMaterial error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error.",
-    });
+     return success(
+      res,
+       `Material added successfully for ${course_title}`,
+       {file_url: material_type === "pdf" ? file_url : null,}, 
+       201)
+  } catch (err) {
+    return error(res, "Internal server error", 500)
   }
 };
 
@@ -80,7 +68,7 @@ export const getCourseMaterialByCourseSlug = async (req, res) => {
     const courseSlug = req.params.slug
 
     if (!courseSlug) {
-      return res.json({ success: false, message: "Material not avaiable for these course ." })
+      return error(res, "Material not avaiable for these course .", 400)
     }
 
     const [checkCourse] = await db.execute(
@@ -89,9 +77,7 @@ export const getCourseMaterialByCourseSlug = async (req, res) => {
     )
 
     if(checkCourse.length === 0){
-      return res.status(400).json({
-        success: false, 
-        message: "Courses not avaiable ."})
+      return error(res, "Courses not avaiable .", 400)
     }
 
     const courseId = checkCourse[0].id
@@ -103,13 +89,12 @@ export const getCourseMaterialByCourseSlug = async (req, res) => {
     );
 
     if (materialRows.length == 0) {
-      return res.status(400).json({ success: false, message: "Material not avaiable for these course ." })
+      return error(res, "Material not avaiable for these course ." , 400)
     }
-
-    return res.status(200).json({ success: true, material: materialRows })
-  } catch (error) {
-    console.log(error)
-    return res.status(500).json({ success: false, message: "Internal server error ." })
+ return success(res, {material: materialRows}, 200)
+    
+  } catch (err) {
+    return error(res, "Internal server error .", 500 )
   }
 }
 
@@ -123,10 +108,7 @@ export const updateCourseMaterialBySlug = async (req, res) => {
     const file_url = req.file ? req.file.filename : null;
 
     if (!title || !material_type || !course_title) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required."
-      });
+      return error(res, "All fields are required.", 400)
     }
 
     const [rows] = await db.execute(
@@ -135,10 +117,7 @@ export const updateCourseMaterialBySlug = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Course not found."
-      });
+      return error(res, "Course not found.", 404)
     }
 
     const courseId = rows[0].id;
@@ -149,10 +128,7 @@ export const updateCourseMaterialBySlug = async (req, res) => {
     if (material_type === "pdf") {
 
       if (!file_url) {
-        return res.status(400).json({
-          success: false,
-          message: "Please upload PDF file."
-        });
+        return error(res,  "Please upload PDF file.", 400)
       }
 
       updateQuery = `
@@ -166,10 +142,7 @@ export const updateCourseMaterialBySlug = async (req, res) => {
     } else {
 
       if (!youtube_url) {
-        return res.status(400).json({
-          success: false,
-          message: "Please provide YouTube link."
-        });
+        return error(res, "Please provide YouTube link.", 400)
       }
 
       updateQuery = `
@@ -184,25 +157,13 @@ export const updateCourseMaterialBySlug = async (req, res) => {
     const [result] = await db.execute(updateQuery, values);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Material not found."
-      });
+      return error(res, "Material not found.", 404)
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Course material updated successfully."
-    });
+    return error(res,  "Course material updated successfully.", 200)
 
-  } catch (error) {
-
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error."
-    });
+  } catch (err) {
+   return error(res, "Internal server error .", 500)
   }
 };
 
@@ -212,8 +173,7 @@ export const deleteCourseBySlug = async (req, res) => {
     const slug = req.params.slug
 
     if (!slug) {
-      return res.status(400).json({ success: false, message: "Select course please ." })
-    }
+      return error(res,"Select course please .", 400 )    }
 
     const [existingMaterial] = await db.execute(`
         SELECT file_url , url_public_id
@@ -222,7 +182,7 @@ export const deleteCourseBySlug = async (req, res) => {
     );
 
     if (existingMaterial === 0) {
-      return res.status(400).json({ success: false, message: "Selected course is not avaiable ." })
+      return error(res, "Selected course is not avaiable ." , 400)
     }
 
     const urlPublicId = existingMaterial[0].url_public_id
@@ -233,10 +193,11 @@ export const deleteCourseBySlug = async (req, res) => {
 
 
     await db.execute(`DELETE FROM course_materials WHERE slug = ?`, [slug])
-    return res.status(400).json({ success: true, message: "Material removed successfully ." })
 
-  } catch (error) {
-    return res.status(500).json({ success: false, message: "Internal server error ." })
+    return error(res, "Material removed successfully .", 200)
+
+  } catch (err) {
+    return error(res, "Internal server error .", 500)
   }
 }
 

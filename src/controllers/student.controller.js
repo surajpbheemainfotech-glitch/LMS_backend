@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import db from "../config/db.js";
 import cloudinary from "../config/cloudinaryConfig.js";
-import { createSlug } from "../services/service.slug.generator.js";
+import { createSlug, generateApplicationSlug } from "../services/service.slug.generator.js";
 import { error, success } from "../utils/response.js";
 
 export const studentRegister = async (req, res) => {
@@ -239,3 +239,99 @@ export const getAllStudents = async (req, res) => {
         return error(res, "Internal server error!", 500);
     }
 };
+
+export const applyForJob = async (req, res) => {
+
+    const { application_type } = req.body
+    const job_slug = req.params.slug
+    const student_id = req.user.id
+    const resume = req.file?.path || null;
+    const resume_public_id = req.file?.filename || null;
+
+    if (!application_type || !job_slug) {
+        return error(res, "All fields are required .", 400)
+    }
+
+    if (!student_id) {
+        return error(res, " Pleas Login .", 400)
+    }
+
+    if (!resume) {
+        return error(res, "Please select file .")
+    }
+
+    try {
+
+        if ( !application_type) {
+            if (resume_public_id) {
+                await cloudinary.uploader.destroy(resume_public_id);
+            }
+
+            return error(res, "Required fields missing", 400)
+        }
+
+        const [checkJob] = await db.execute(
+            `SELECT opportunity_id FROM opportunities WHERE slug = ?`,
+            [job_slug]
+        )
+
+        if (checkJob.length === 0) {
+            return error(res, "Hiring are closed .", 400)
+        }
+
+        const job_id = checkJob[0].opportunity_id
+        const jobSlug = generateApplicationSlug(application_type, student_id, job_id)
+
+        await db.execute(
+            `INSERT INTO student_applications 
+            (student_id, job_id, application_type, resume_url , resume_public_id, slug applied_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [student_id, job_id, application_type, resume, resume_public_id, jobSlug,  new Date(), new Date()]
+        )
+
+        return success(
+            res,
+            "Applied successfully .",
+            {
+                data: {
+                    application_type,
+                    resume,
+                }
+            }, 200)
+
+    } catch (err) {
+        if (req.file?.filename) {
+            try {
+                await cloudinary.uploader.destroy(req.file.filename);
+            } catch (destroyError) {
+                console.error("Cloudinary cleanup error:", destroyError.message);
+            }
+        }
+
+        console.error("Add job Error:", err);
+        return error(res, "Internal server error ", 500)
+
+    }
+}
+
+export const allJobs = async (req, res) => {
+
+    try {
+
+        const [jobs] = await db.execute(
+         `SELECT 
+            op.company_id, op.job_title, op.slug, op.type, op.description, 
+            op.location, op.salary, op.duration, op.posted_date, op.last_date,
+            c.company_name AS company
+         FROM opportunities op
+         LEFT JOIN companies c 
+         ON op.company_id = c.company_id`
+        );
+
+        return success(res, { jobs: jobs }, 200)
+
+    } catch (err) {
+        console.log(err)
+        return error(res, "Internal server error ", 500)
+    }
+}

@@ -1,12 +1,11 @@
-
+import slugify from "slugify";
 
 export const createSlug = (lastName) => {
-
-  const baseSlug = lastName
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w\-]+/g, "");
+  const baseSlug = slugify(lastName, {
+    lower: true,
+    strict: true, // removes special characters
+    trim: true,
+  });
 
   const now = new Date();
 
@@ -20,4 +19,15 @@ export const createSlug = (lastName) => {
     String(now.getSeconds()).padStart(2, "0");
 
   return `${baseSlug}-${datetime}`;
+};
+
+export const generateApplicationSlug = (
+  applicationType,
+  userId,
+  jobId
+) => {
+  return slugify(`application-${applicationType}-${userId}-${jobId}`, {
+    lower: true,
+    strict: true
+  });
 };

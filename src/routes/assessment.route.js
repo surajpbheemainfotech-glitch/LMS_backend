@@ -3,7 +3,7 @@ import { verifyToken } from "../middleware/verifyToken.js";
 import {
     getCertificateByUserId,
      getCourseAssessment, 
-     getScoreAndAttemp, 
+     getScoreAndAttempt, 
      insertAssesment ,
      submitAssesmentTest
     } from "../controllers/assisment.controller.js";
@@ -15,7 +15,7 @@ assessmentRouter.post("/add_assessment/:id",verifyToken, insertAssesment )
 assessmentRouter.post("/submit_assessment/:slug",verifyToken, submitAssesmentTest)
 
 assessmentRouter.get("/get_assessment/:slug",verifyToken, getCourseAssessment)
-assessmentRouter.get("/check_attempts",verifyToken, getScoreAndAttemp)
+assessmentRouter.get("/check_attempts",verifyToken, getScoreAndAttempt)
 assessmentRouter.get("/generate_certificate/:id", getCertificateByUserId)
 
 

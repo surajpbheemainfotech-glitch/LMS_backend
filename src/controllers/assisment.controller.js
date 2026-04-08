@@ -150,50 +150,46 @@ export const submitAssesmentTest = async (req, res) => {
     }
 };
 
-export const getScoreAndAttemp = async (req, res) => {
-    try {
-        const studenetId = req.user?.id;
+export const getScoreAndAttempt = async (req, res) => {
+  try {
+    const studentId = req.user?.id;
 
-        if (!studenetId) {
-            return error(res, "Login please.", 400)
-        }
-
-        const [countResult] = await db.execute(
-            `SELECT COUNT(*) as count 
-             FROM test_attempts 
-             WHERE student_id = ? AND attempt_date = CURRENT_DATE`,
-            [studenetId]
-        );
-
-        const attemptsToday = countResult[0].count;
-
-        const [highScoreResult] = await db.execute(
-            `SELECT MAX(score) as maxScore 
-             FROM test_attempts 
-             WHERE student_id = ?`,
-            [studenetId]
-        );
-
-        const maxScore = highScoreResult[0].maxScore || 0;
-
-        const isBlocked = maxScore >= 75;
-
-        return success(
-            res,
-            isBlocked
-                ? "You already scored 75%+. Further attempts are blocked."
-                : "You can attempt the test.",
-            {
-                attempts: attemptsToday,
-                maxScore,
-                isBlocked
-            }, 200)
-
-
-
-    } catch (error) {
-        return error(res, "Internal server error ", 500)
+    if (!studentId) {
+      return error(res, "Login please.", 400);
     }
+
+    const [[result]] = await db.execute(
+      `
+      SELECT 
+        COUNT(CASE WHEN attempt_date = CURRENT_DATE THEN 1 END) AS attemptsToday,
+        COALESCE(MAX(score), 0) AS maxScore
+      FROM test_attempts
+      WHERE student_id = ?
+      `,
+      [studentId]
+    );
+
+    const { attemptsToday, maxScore } = result;
+
+    const isBlocked = maxScore >= 75;
+
+    return success(
+      res,
+      isBlocked
+        ? "You already scored 75%+. Further attempts are blocked."
+        : "You can attempt the test.",
+      {
+        attempts: attemptsToday,
+        maxScore,
+        isBlocked
+      },
+      200
+    );
+
+  } catch (err) {
+    console.error(err);
+    return error(res, "Internal server error", 500);
+  }
 };
 
 export const getCertificateByUserId = async (req, res) => {
@@ -222,7 +218,7 @@ export const getCertificateByUserId = async (req, res) => {
 
         return success(res, {userData: certificateDetails}, 200)
 
-    } catch (error) {
+    } catch (err) {
         return error(res, "Internal server error .", 500)
     }
 }

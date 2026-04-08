@@ -14,6 +14,7 @@ import reviewRouter from "./routes/review.route.js";
 import assessmentRouter from "./routes/assessment.route.js";
 import studentRouter from "./routes/student.route.js";
 import companyRouter from "./routes/company.route.js";
+import { generateApplicationSlug } from "./services/service.slug.generator.js";
 
 dotenv.config();
 

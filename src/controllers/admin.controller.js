@@ -25,7 +25,7 @@ export const adminLogin = async (req, res) => {
       [email]
     );
 
-    if (rows.length === 0) {
+    if (!rows.length) {
       return res.status(401).json({
         success: false,
         message: "Invalid Email",

@@ -191,7 +191,7 @@ export const getCoursesByCategorySlug = async (req, res) => {
     }
 
     const [checkCategory] = await db.execute(
-      `SELECT id FROM categories WHERE slug = ?`, [slug]
+      `SELECT id FROM categories WHERE slug = ?`, [category_slug]
     )
 
     if (checkCategory.length === 0) {
@@ -203,7 +203,7 @@ export const getCoursesByCategorySlug = async (req, res) => {
     const [courseRows] = await db.execute(
       `SELECT 
     c.id, c.title, c.description, c.short_description,c.price,
-    c.thumbnail, c.level, c.language, c.duration,c.total_lectures,c.category_id,
+    c.thumbnail, c.level, c.language, c.slug, c.duration,c.total_lectures,c.category_id,
     cat.name AS category_name,
     c.is_published, c.created_at, c.updated_at
   FROM courses c
@@ -361,18 +361,17 @@ export const getCourseBySlug = async (req, res) => {
       return error(res, "Selected course is not available.", 400);
     }
 
-    const [course] = await db.execute(`
-     SELECT 
-       c.id, c.title, c.description, c.short_description,
-       c.price, c.thumbnail, c.level, c.language, c.duration, c.total_lectures, c.slug,
-       cat.name AS category_name,
-       GROUP_CONCAT(cm.title) AS material_titles
-     FROM courses c
-     JOIN categories cat ON c.category_id = cat.id
-     LEFT JOIN course_materials cm ON cm.course_id = c.id
-     WHERE c.slug = ?
-     GROUP BY c.id
-    `, [slug]);
+    const [course] = await db.execute(
+      `SELECT 
+        c.id, c.title, c.description, c.short_description,
+        c.price, c.thumbnail, c.level, c.language, c.duration, c.total_lectures, c.slug,
+        cat.name AS category_name,
+      GROUP_CONCAT(cm.title ORDER BY cm.created_at ASC) AS material_titles
+      FROM courses c
+      JOIN categories cat ON c.category_id = cat.id
+      LEFT JOIN course_materials cm ON cm.course_id = c.id
+      WHERE c.slug = ?
+     GROUP BY c.id`, [slug]);
 
     if (course.length === 0) {
       return error(res, "Course not found", 404);
@@ -543,3 +542,4 @@ export const getCourseProgressByCourseSlug = async (req, res) => {
     return error(res, "Internal server error.", 500);
   }
 };
+

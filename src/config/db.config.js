@@ -1,10 +1,10 @@
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
+import logger from "../utils/logger.js";
 
 dotenv.config();
 
-
-const obj ={
+const obj = {
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -12,16 +12,32 @@ const obj ={
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-}
+};
 
 const pool = mysql.createPool(obj);
 
 export const connectDB = async () => {
   try {
-    await pool.query("SELECT 1"); // simple test query
-    console.log("MySQL Pool Connected Successfully");
+    logger.info("Connecting to MySQL database...");
+
+    await pool.query("SELECT 1");
+
+    logger.info(
+      {
+        host: process.env.DB_HOST,
+      },
+      "MySQL Pool Connected Successfully"
+    );
+
   } catch (error) {
-    console.error(" Database Connection Failed:", error.message);
+    logger.error(
+      {
+        err: error,
+        host: process.env.DB_HOST
+      },
+      "Database Connection Failed"
+    );
+
     process.exit(1);
   }
 };

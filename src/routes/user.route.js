@@ -1,10 +1,10 @@
 import express from 'express'
 import {
-    addAdmins,
     adminLogin,
     adminLogout,
     getAllUser,
     getUserById,
+    registerUser,
     removeAdmins,
 } from '../controllers/user.controller.js'
 import {
@@ -17,7 +17,7 @@ import courseRouter from './course.route.js'
 const userRouter = express.Router()
 
 userRouter.post("/admin_login", loginValidation, adminLogin)
-userRouter.post("/add_admin", signupValidation, addAdmins)
+userRouter.post("/register_admin", signupValidation, registerUser)
 userRouter.post("/logout", adminLogout) 
 
 userRouter.get("/all-users", getAllUser)

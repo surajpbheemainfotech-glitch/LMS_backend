@@ -1,4 +1,4 @@
-import db from "../config/db.js";
+import db from "../config/db.config.js";
 
 
 export const checkAttemptLimit = async (student_id) => {

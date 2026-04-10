@@ -1,7 +1,9 @@
 import Joi from "joi";
 
 export const signupValidation = (req, res, next) => {
+
   const schema = Joi.object({
+
     first_name: Joi.string()
       .trim()
       .pattern(/^[A-Za-z]+$/)
@@ -36,33 +38,44 @@ export const signupValidation = (req, res, next) => {
       .lowercase()
       .required(),
 
-    password: Joi.string()
-      .min(8)
-      .max(20)
-      .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/)
-      .required()
-      .messages({
-        "string.pattern.base":
-          "Password must include uppercase, lowercase, number and special character",
-      }),
-
-
     role: Joi.string()
-      .valid("user", "admin", "intern", "super admin", "teacher", "company")
+      .valid("user", "admin", "intern", "super admin", "teacher", "corporate")
       .default("user")
       .messages({
-        "any.only": "Role must be one of user, admin, intern, superadmin",
+        "any.only":
+          "Role must be one of user, admin, intern, super admin, teacher, corporate",
       }),
 
-    description: Joi.string()
-      .trim()
-      .min(10)
-      .max(500)
-      .optional()
-      .messages({
-        "string.min": "Description must be at least 10 characters",
-        "string.max": "Description cannot exceed 500 characters",
-      }),
+    // COMPANY FIELDS (only required if role = corporate)
+company_name: Joi.string()
+  .trim()
+  .min(2)
+  .max(100)
+  .when("role", {
+    is: "corporate",
+    then: Joi.required(),
+    otherwise: Joi.allow("").optional(),
+  }),
+
+industry: Joi.string()
+  .trim()
+  .min(2)
+  .max(100)
+  .when("role", {
+    is: "corporate",
+    then: Joi.required(),
+    otherwise: Joi.allow("").optional(),
+  }),
+
+location: Joi.string()
+  .trim()
+  .min(2)
+  .max(200)
+  .when("role", {
+    is: "corporate",
+    then: Joi.required(),
+    otherwise: Joi.allow("").optional(),
+  }),
   });
 
   const { error } = schema.validate(req.body, { abortEarly: false });
@@ -78,7 +91,9 @@ export const signupValidation = (req, res, next) => {
 };
 
 export const loginValidation = (req, res, next) => {
+
   const schema = Joi.object({
+
     email: Joi.string()
       .trim()
       .email({ tlds: { allow: false } })
@@ -96,6 +111,7 @@ export const loginValidation = (req, res, next) => {
         "string.min": "Password must be at least 6 characters",
         "any.required": "Password is required"
       })
+
   });
 
   const { error } = schema.validate(req.body, { abortEarly: false });

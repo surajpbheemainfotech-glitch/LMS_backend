@@ -1,5 +1,3 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import db from "../config/db.config.js";
 import cloudinary from "../config/cloudinary.config.js";
 import { createSlug, generateApplicationSlug } from "../services/service.slug.generator.js";
@@ -14,86 +12,6 @@ const cleanupCloudinary = async (publicId) => {
     } catch (err) {
       logger.error(`Cloudinary cleanup error: ${err.message}`);
     }
-  }
-};
-
-export const studentRegister = async (req, res) => {
-  const { first_name, last_name, mobile, email, password } = req.body;
-
-  if (!first_name || !last_name || !mobile || !email || !password) {
-    return error(res, "All fields are required", 400);
-  }
-
-  try {
-    logger.info({ email }, "Student registration attempt");
-
-    const [existing] = await db.execute("SELECT id FROM students WHERE email = ?", [email]);
-    if (existing.length > 0) return error(res, "Email already registered", 400);
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const slug = createSlug(last_name);
-
-    const [result] = await db.execute(
-      "INSERT INTO students (first_name, last_name, mobile, email, password, slug) VALUES (?, ?, ?, ?, ?, ?)",
-      [first_name, last_name, mobile, email, hashedPassword, slug]
-    );
-
-    logger.info({ studentId: result.insertId }, "Student registered successfully");
-    return success(res, "Student Registered Successfully.", { userId: result.insertId }, 201);
-
-  } catch (err) {
-    logger.error(err, "Student registration failed");
-    return error(res, "Server Error", 500);
-  }
-};
-
-export const studentLogin = async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) return error(res, "Email and Password are required", 400);
-
-  try {
-    logger.info({ email }, "Student login attempt");
-
-    const [rows] = await db.execute("SELECT * FROM students WHERE email = ?", [email]);
-    if (rows.length === 0) return error(res, "Invalid Email", 401);
-
-    const user = rows[0];
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return error(res, "Invalid Password", 401);
-
-    if (!process.env.JWT_SECRET) return error(res, "JWT_SECRET missing in env", 500);
-
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
-    const isProd = process.env.NODE_ENV === "production";
-
-    res.cookie("userToken", token, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "None" : "Strict",
-      maxAge: 24 * 60 * 60 * 1000,
-    });
-
-    logger.info({ studentId: user.id }, "Student logged in successfully");
-    return success(res, "Login Successful", { token, user: { id: user.id, slug: user.slug, first_name: user.first_name, email: user.email, role: "student" } });
-
-  } catch (err) {
-    logger.error(err, "Student login failed");
-    return error(res, "Server Error", 500);
-  }
-};
-
-export const studentLogout = (req, res) => {
-  try {
-    const isProd = process.env.NODE_ENV === "production";
-    res.clearCookie("userToken", { httpOnly: true, secure: isProd, sameSite: isProd ? "None" : "Strict" });
-
-    logger.info("Student logged out successfully");
-    return success(res, "Logged Out Successfully", {}, 200);
-
-  } catch (err) {
-    logger.error(err, "Student logout failed");
-    return error(res, "Server Error", 500);
   }
 };
 

@@ -13,7 +13,7 @@ import assessmentRouter from "./routes/assessment.route.js";
 import studentRouter from "./routes/student.route.js";
 import companyRouter from "./routes/company.route.js";
 import { requestLogger } from "./middleware/requestLogger.js";
-import { demopassword } from "./test/test.js";
+import authRouter from "./routes/auth.route.js";
 
 dotenv.config();
 
@@ -38,9 +38,9 @@ app.get("/",(req,res) =>{
   res.send(`Server is running on ${PORT} .`)
 })
 
- await demopassword()
 
 // Routes
+app.use("/api/auth", authRouter)
 app.use("/api/admin", adminRouter);
 app.use("/api/user", userRouter);
 app.use("/api/category",categoryRouter)

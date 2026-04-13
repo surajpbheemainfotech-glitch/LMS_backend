@@ -1,9 +1,8 @@
 import express from 'express'
 import {
-    adminLogin,
-    adminLogout,
     approveUserRequests,
-    getApprovalRequests
+    getApprovalRequests,
+    removeUser
 } from '../controllers/admin.controller.js'
 import categoryRouter from './category.route.js'
 import courseRouter from './course.route.js'
@@ -15,11 +14,9 @@ const adminRouter = express.Router()
 
 //admin routes
 
-adminRouter.post("/login", adminLogin)
-adminRouter.post("/logout", verifyToken, adminLogout)
 adminRouter.get("/get_userReqs",verifyToken, getApprovalRequests)
-
 adminRouter.patch("/update_req_status",verifyToken, approveUserRequests)
+adminRouter.delete("/remove-admin/:id",removeUser)
 
 //category route 
 adminRouter.use("/category",categoryRouter)

@@ -1,4 +1,3 @@
-import generatePassword from "../../service.genratePassword.js";
 import { renderTemplate } from "../renderTemplate/renderTemplate.js";
 
 export const buildUserPasswordEmail = ({ name, email, loginUrl , password}) => {
@@ -12,7 +11,6 @@ export const buildUserPasswordEmail = ({ name, email, loginUrl , password}) => {
 
   return {
     subject: "Your LMS Account Password",
-    html,
-    password
+    html
   };
 };

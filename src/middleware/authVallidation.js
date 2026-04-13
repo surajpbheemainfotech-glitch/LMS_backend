@@ -110,9 +110,20 @@ export const loginValidation = (req, res, next) => {
       .messages({
         "string.min": "Password must be at least 6 characters",
         "any.required": "Password is required"
-      })
+      }),
+
+      role: Joi.string()
+      .valid("user", "admin", "intern", "super admin", "teacher", "corporate")
+      .default("user")
+      .messages({
+        "any.only":
+          "Role must be one of user, admin, intern, super admin, teacher, corporate",
+      }),
+
 
   });
+
+  
 
   const { error } = schema.validate(req.body, { abortEarly: false });
 

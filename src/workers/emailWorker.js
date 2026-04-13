@@ -1,15 +1,16 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 import { connectRabbitMQ, getChannel } from "../config/rabbitmq.config.js";
 import { sendMail } from "../services/service.mail/sendmail.js";
 import { buildEmail } from "../services/service.mail/builders/index.js";
 import logger from "../utils/logger.js";
 
 export const startWorker = async () => {
-  await connectRabbitMQ();
-
   const channel = getChannel();
 
+
+  await connectRabbitMQ();
   await channel.assertQueue("email_queue", { durable: true });
 
   logger.info("Email Worker started");
@@ -20,11 +21,14 @@ export const startWorker = async () => {
 
     const data = JSON.parse(msg.content.toString());
 
+    logger.info(data, "Email job received");
+
     try {
 
       const emailContent = buildEmail(data.type, data);
+
       await sendMail({
-        to: process.env.MAIL_ADMIN,
+        to: data.to,  
         subject: emailContent.subject,
         html: emailContent.html
       });

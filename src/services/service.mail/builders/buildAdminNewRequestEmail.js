@@ -10,7 +10,7 @@ export const buildAdminNewRequestEmail = (data) => {
       role: data.role,
       phone: data.phone,
       message: data.message,
-      admin_url: `${process.env.FRONTEND_URL}/admin/login`
+      admin_url: `${process.env.FRONTEND_URL}/login`
     }
   );
 

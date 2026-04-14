@@ -10,9 +10,9 @@ import {
     getCoursesByCategorySlug,
     getCourseBySlug,
     enrollStudentInCourse,
-    updateStudentCourseProgress,
     getStudentCourses,
-    getCourseProgressByCourseSlug
+    getCourseProgress,
+    completeMaterial,
 } from "../controllers/course.controller.js"
 import { createImageUpload } from "../middleware/cloud.upload/image.upload.js"
 
@@ -22,9 +22,9 @@ const courseUpload = createImageUpload("LMS_PROJECT/courses", "course");
 
 courseRouter.post("/add", verifyToken,courseUpload.single("thumbnail"), addCourse)
 courseRouter.post("/enroll",verifyToken, enrollStudentInCourse)
+courseRouter.post("/:slug/complete_material", verifyToken, completeMaterial)
 
-courseRouter.patch("/update/:slug", verifyToken, updateCourse)
-courseRouter.patch("/update-course-progress/:slug", verifyToken, updateStudentCourseProgress)
+courseRouter.patch("/update/:slug", verifyToken, updateCourse)  
 courseRouter.delete("/delete/:slug", verifyToken, deleteCourse)
 
 courseRouter.get("/get",getCourses)
@@ -32,6 +32,6 @@ courseRouter.get("/get/:slug",getCourseBySlug)
 courseRouter.get("/courses/:slug", getCoursesByCategorySlug)
 courseRouter.get("/active-courses",verifyToken, getActiveCourses)
 courseRouter.get("/mycourses/:slug",verifyToken, getStudentCourses)
-courseRouter.get("/check-course-progress/:slug",  getCourseProgressByCourseSlug)
+courseRouter.get("/:slug/progress",verifyToken,  getCourseProgress)
 
 export default courseRouter

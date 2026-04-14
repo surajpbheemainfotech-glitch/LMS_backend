@@ -1,7 +1,8 @@
 import express from 'express'
 import {
     signupValidation,
-    loginValidation
+    loginValidation,
+    studentValidation
 } from "../middleware/authVallidation.js"
 import { 
     adminLogin, 
@@ -24,7 +25,7 @@ authRouter.post("/user_register", signupValidation, registerUser)
 authRouter.post("/user_login",loginValidation, loginUser)
 
 //student
-authRouter.post("/student_register",signupValidation, studentRegister)
+authRouter.post("/student_register",studentValidation, studentRegister)
 authRouter.post("/student_login",loginValidation, studentLogin)
 
 //common-routes 

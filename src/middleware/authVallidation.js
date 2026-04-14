@@ -113,7 +113,7 @@ export const loginValidation = (req, res, next) => {
       }),
 
       role: Joi.string()
-      .valid("user", "admin", "intern", "super admin", "teacher", "corporate")
+      .valid("user", "admin", "student", "super admin", "teacher", "corporate")
       .default("user")
       .messages({
         "any.only":
@@ -122,8 +122,6 @@ export const loginValidation = (req, res, next) => {
 
 
   });
-
-  
 
   const { error } = schema.validate(req.body, { abortEarly: false });
 
@@ -136,3 +134,62 @@ export const loginValidation = (req, res, next) => {
 
   next();
 };
+
+export const studentValidation = (req, res, next) =>{
+   const schema = Joi.object({
+
+    first_name: Joi.string()
+      .trim()
+      .pattern(/^[A-Za-z]+$/)
+      .min(2)
+      .max(50)
+      .required()
+      .messages({
+        "string.pattern.base": "First name must contain only letters",
+      }),
+
+    last_name: Joi.string()
+      .trim()
+      .pattern(/^[A-Za-z]+$/)
+      .min(2)
+      .max(50)
+      .required()
+      .messages({
+        "string.pattern.base": "Last name must contain only letters",
+      }),
+
+    mobile: Joi.string()
+      .trim()
+      .pattern(/^[6-9]\d{9}$/)
+      .required()
+      .messages({
+        "string.pattern.base": "Mobile must be valid 10-digit Indian number",
+      }),
+
+    email: Joi.string()
+      .trim()
+      .email({ tlds: { allow: false } })
+      .lowercase()
+      .required(),
+
+      password: Joi.string()
+      .min(6)
+      .required()
+      .messages({
+        "string.min": "Password must be at least 6 characters",
+        "any.required": "Password is required"
+      }),
+
+    });
+
+  const { error } = schema.validate(req.body, { abortEarly: false });
+
+  if (error) {
+    return res.status(400).json({
+      success: false,
+      errors: error.details.map((err) => err.message),
+    });
+  }
+
+  next();
+}

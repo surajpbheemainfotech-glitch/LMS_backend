@@ -267,66 +267,66 @@ export const getCourseBySlug = async (req, res) => {
   }
 };
 
-export const updateStudentCourseProgress = async (req, res) => {
+export const completeMaterial = async (req, res) => {
   try {
-    const { completed_lessons_ids } = req.body;
-    const course_slug = req.params.slug;
     const studentId = req.user.id;
+    const { material_id } = req.body;
 
-    if (!course_slug) return error(res, "Please select course", 400);
-    if (!completed_lessons_ids?.length) return error(res, "Please send lesson ids", 400);
-
-    const [course] = await db.execute("SELECT id, total_lectures FROM courses WHERE slug = ? LIMIT 1", [course_slug]);
-    if (!course.length) return error(res, "Course not found", 404);
-
-    const course_id = course[0].id;
-
-    const [progressData] = await db.execute("SELECT completed_lectures, total_lectures FROM course_progress WHERE course_id = ? AND student_id = ?", [course_id, studentId]);
-    if (!progressData.length) return error(res, "Course progress not found", 404);
-
-    let existingLessons = [];
-    try {
-      existingLessons = progressData[0].completed_lectures ? JSON.parse(progressData[0].completed_lectures) : [];
-    } catch {
-      existingLessons = [];
-    }
-
-    completed_lessons_ids.forEach(id => {
-      if (!existingLessons.includes(id)) existingLessons.push(id);
-    });
-
-    const progressPercent = ((existingLessons.length / progressData[0].total_lectures) * 100).toFixed(2);
+    if (!material_id) return error(res, "Material id required", 400);
 
     await db.execute(
-      `UPDATE course_progress SET completed_lectures = ?, progress_percentage = ?, last_accessed = ? WHERE student_id = ? AND course_id = ?`,
-      [JSON.stringify(existingLessons), progressPercent, new Date(), studentId, course_id]
+      `INSERT INTO lecture_completions (student_id, material_id)
+       VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE completed_at = NOW()`,
+      [studentId, material_id]
     );
 
-    logger.info({ studentId, course_id, progressPercent }, "Updated student course progress");
-    return success(res, "Progress saved", { progress: progressPercent, completed_lessons: existingLessons }, 200);
+    return success(res, "Material marked completed");
 
   } catch (err) {
-    logger.error(err, "Updating student course progress failed");
-    return error(res, "Internal server error", 500);
+    return error(res, "Server error", 500);
   }
 };
 
-export const getCourseProgressByCourseSlug = async (req, res) => {
+export const getCourseProgress = async (req, res) => {
   try {
-    const slug = req.params.slug;
-    if (!slug) return error(res, "This course is not available", 400);
+    const studentId = req.user.id;
+    const { slug } = req.params;
 
-    const [course] = await db.execute("SELECT id FROM courses WHERE slug = ? LIMIT 1", [slug]);
-    if (!course.length) return error(res, "Invalid course", 404);
+    const [course] = await db.execute(
+      "SELECT id, total_lectures FROM courses WHERE slug = ? LIMIT 1",
+      [slug]
+    );
 
-    const [progress] = await db.execute("SELECT completed_lectures, total_lectures, progress_percentage, last_accessed FROM course_progress WHERE course_id = ?", [course[0].id]);
-    if (!progress.length) return error(res, "Course progress not found", 404);
+    if (!course.length) return error(res, "Course not found", 404);
 
-    logger.info({ course_slug: slug }, "Fetched course progress");
-    return success(res, "Course progress fetched successfully", { progress: progress[0] }, 200);
+    const course_id = course[0].id;
+    const totalLectures = course[0].total_lectures;
+
+    const [completed] = await db.execute(
+      `SELECT lc.material_id
+       FROM lecture_completions lc
+       JOIN course_materials cm ON cm.id = lc.material_id
+       WHERE lc.student_id = ? AND cm.course_id = ?`,
+      [studentId, course_id]
+    );
+
+    const completedIds = completed.map(item => item.material_id);
+    const completedCount = completedIds.length;
+
+    const progress =
+      totalLectures === 0
+        ? 0
+        : ((completedCount / totalLectures) * 100).toFixed(2);
+
+    return success(res, "Course progress", {
+      completed: completedCount,
+      total: totalLectures,
+      progress,
+      completed_material_ids: completedIds
+    });
 
   } catch (err) {
-    logger.error(err, "Fetching course progress failed");
-    return error(res, "Internal server error", 500);
+    return error(res, "Server error", 500);
   }
 };

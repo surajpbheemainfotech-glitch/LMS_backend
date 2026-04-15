@@ -524,18 +524,15 @@ export const verifyOtp = async (req, res) => {
 
     const record = rows[0];
 
-    // check max attempts
     if (record.attempts >= record.max_attempts) {
       return error(res, "Too many attempts. Please request a new OTP.", 400);
     }
 
-    // check expiry
     if (new Date() > new Date(record.expires_at)) {
       return error(res, "OTP expired.", 400);
     }
 
-    // check OTP match
-    if (record.otp !== otp) {
+   if (String(record.otp) !== String(otp)) {
 
       await db.execute(
         `UPDATE password_otps
@@ -567,11 +564,11 @@ export const logout = (req, res) => {
     const isProd = process.env.NODE_ENV === "production";
     res.clearCookie("userToken", { httpOnly: true, secure: isProd, sameSite: isProd ? "None" : "Strict" });
 
-    logger.info("Admin logged out successfully");
-    return success(res, "Logged Out Successfully", {}, 200);
+    logger.info( ` ${req.user.role} logged out successfully`);
+    return success(res, ` ${req.user.role} Logged Out Successfully`, {}, 200);
 
   } catch (err) {
-    logger.error(err, "Admin logout failed");
+    logger.error(err, ` ${req.user.role} logout failed`);
     return error(res, "Internal server error.", 500);
   }
 };

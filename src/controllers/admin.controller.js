@@ -83,11 +83,6 @@ export const approveUserRequests = async (req, res) => {
     }
 
     await db.execute(
-      `UPDATE users SET status = ? WHERE email = ?`,
-      ["active", user_email]
-    );
-
-    await db.execute(
       `UPDATE approval_requests
        SET approval_status = ?, approved_by = ?, approved_date = ?, remarks = ?
        WHERE user_email = ?`,
@@ -111,8 +106,8 @@ export const approveUserRequests = async (req, res) => {
       const hashedPassword = await bcrypt.hash(plainPassword, 10)
 
       await db.execute(
-        `UPDATE users SET password = ? WHERE email = ?`,
-        [hashedPassword, user_email]
+        `UPDATE users SET password = ?, status = ? WHERE email = ?`,
+        [hashedPassword, "active" , user_email]
       )
 
       await enqueueEmail({
@@ -123,6 +118,11 @@ export const approveUserRequests = async (req, res) => {
         loginUrl: `${process.env.FRONTEND_URL}/recoverpassword`,
         password: plainPassword
       })
+    }else{
+       
+      await db.execute(
+        `DELETE FROM users WHERE email = ?`,[user_email]
+      )
     }
 
     logger.info({ user_email, approval_status }, "User approval updated")

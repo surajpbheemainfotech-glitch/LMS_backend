@@ -1,6 +1,6 @@
 import db from "../config/db.config.js";
 import cloudinary from "../config/cloudinary.config.js";
-import { createSlug, generateApplicationSlug } from "../services/service.slug.generator.js";
+import {  generateApplicationSlug } from "../services/service.slug.generator.js";
 import { error, success } from "../utils/response.js";
 import logger from "../utils/logger.js";
 

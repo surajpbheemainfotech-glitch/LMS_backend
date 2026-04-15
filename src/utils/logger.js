@@ -2,18 +2,23 @@ import pino from "pino";
 
 const isDev = process.env.NODE_ENV !== "production";
 
-const logger = pino({
-  level: process.env.LOG_LEVEL || "info",
-  transport: isDev
-    ? {
+export const logger = pino(
+  {
+    level: process.env.LOG_LEVEL || "info",
+    base: { service: "backend", env: process.env.NODE_ENV || "development" },
+    timestamp: () => `,"time":"${new Date().toISOString()}"`,
+  },
+  isDev
+    ? pino.transport({
         target: "pino-pretty",
         options: {
           colorize: true,
-          translateTime: "SYS:standard",
-          ignore: "pid,hostname"
-        }
-      }
+          translateTime: "dd mmm yyyy HH:MM:ss.l",
+          singleLine: true,
+          ignore: "pid,hostname",
+        },
+      })
     : undefined
-});
+);
 
 export default logger;

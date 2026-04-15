@@ -12,7 +12,7 @@ export const getAllUser = async (req, res) => {
       FROM users u
       LEFT JOIN user_roles ur ON u.id = ur.user_id
       LEFT JOIN roles r ON ur.role_id = r.id
-      WHERE r.role_name != 'super admin'
+      WHERE r.role_name != 'superadmin'
     `);
 
     if (!users.length) return error(res, "Users are not available.", 400);
@@ -42,5 +42,3 @@ export const getUserById = async (req, res) => {
     return error(res, "Internal server error.", 500);
   }
 };
-
-

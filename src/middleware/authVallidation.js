@@ -39,11 +39,11 @@ export const signupValidation = (req, res, next) => {
       .required(),
 
     role: Joi.string()
-      .valid("user", "admin", "intern", "super admin", "teacher", "corporate")
+      .valid("user", "admin", "intern", "superadmin", "teacher", "corporate")
       .default("user")
       .messages({
         "any.only":
-          "Role must be one of user, admin, intern, super admin, teacher, corporate",
+          "Role must be one of user, admin, intern, superadmin, teacher, corporate",
       }),
 
     // COMPANY FIELDS (only required if role = corporate)
@@ -113,11 +113,11 @@ export const loginValidation = (req, res, next) => {
       }),
 
       role: Joi.string()
-      .valid("user", "admin", "student", "super admin", "teacher", "corporate")
+      .valid("user", "admin", "student", "superadmin", "teacher", "corporate")
       .default("user")
       .messages({
         "any.only":
-          "Role must be one of user, admin, intern, super admin, teacher, corporate",
+          "Role must be one of user, admin, intern, superadmin, teacher, corporate",
       }),
 
 

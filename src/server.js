@@ -7,9 +7,11 @@ import { startWorker } from "./workers/emailWorker.js";
 
 
 const PORT = process.env.PORT || 5000;
-
+const HOST = process.env.HOST  ;
 
 const startServer = async () => {
+
+  try {
 
   await connectDB()
   await connectRabbitMQ();
@@ -24,10 +26,22 @@ const startServer = async () => {
     console.error("Unhandled Rejection:", err);
   });
 
-  app.listen(PORT, () => {
-    logger.info(`Server running on port ${PORT}`);
-  });
-};
+  const server = app.listen(PORT, HOST, () => {
+      logger.info(
+        { host: HOST || "localhost", port: PORT },
+        "Server started"
+      );
+    });
+
+    process.on("SIGINT", () => server.close(() => process.exit(0)));
+    process.on("SIGTERM", () => server.close(() => process.exit(0)));
+    
+  } catch (err) {
+    logger.fatal({ err }, "Startup failed");
+    process.exit(1);
+  }
+}
+  
 
 
 startServer();

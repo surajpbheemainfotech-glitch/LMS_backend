@@ -9,7 +9,7 @@ import courseRouter from './course.route.js'
 const userRouter = express.Router()
 
 
-userRouter.get("/all-users", getAllUser)
+userRouter.get("/all_users", getAllUser)
 userRouter.get("/user-profile/:id",verifyToken,getUserById)
 
 //hadle courses

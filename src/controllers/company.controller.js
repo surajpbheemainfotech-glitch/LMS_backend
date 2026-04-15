@@ -119,7 +119,7 @@ export const postJob = async (req, res) => {
 
   const company_slug = req.params.slug
   const { job_title, type, description, location, salary, duration, posted_date, last_date } = req.body
-
+  logger.info(req.body)
   try {
 
     logger.info({ company_slug, job_title }, "Job posting request")
@@ -135,7 +135,7 @@ export const postJob = async (req, res) => {
     }
 
     const [validCompany] = await db.execute(
-      `SELECT id FROM companies WHERE slug = ?`,
+      `SELECT company_id FROM companies WHERE slug = ?`,
       [company_slug]
     )
 
@@ -144,7 +144,7 @@ export const postJob = async (req, res) => {
       return error(res, "Company not found.", 404)
     }
 
-    const company_id = validCompany[0].id
+    const company_id = validCompany[0].company_id
     const job_slug = createSlug(job_title)
 
     await db.execute(
@@ -205,10 +205,10 @@ export const deleteJob = async (req, res) => {
 export const getJobs = async (req, res) => {
   const company_slug = req.params.slug
 
-  req.log.info({ company_slug }, "Fetching jobs for company")
+  logger.info({ company_slug }, "Fetching jobs for company")
 
   if (!company_slug) {
-    req.log.warn("Company slug missing in request")
+    logger.warn("Company slug missing in request")
     return error(res, "Please login .", 500)
   }
 
@@ -224,7 +224,7 @@ export const getJobs = async (req, res) => {
       return error(res, "Company not found", 404)
     }
 
-    req.log.info(
+    logger.info(
       { company_id: checkCompany[0].company_id },
       "Company found, fetching jobs"
     )
@@ -236,7 +236,7 @@ export const getJobs = async (req, res) => {
       [checkCompany[0].company_id]
     )
 
-    req.log.info(
+    logger.info(
       { company_id: checkCompany[0].company_id, jobs_count: jobs.length },
       "Jobs fetched successfully"
     )
@@ -245,7 +245,7 @@ export const getJobs = async (req, res) => {
 
   } catch (err) {
 
-    req.log.error(
+    logger.error(
       { err, company_slug },
       "Error while fetching jobs"
     )

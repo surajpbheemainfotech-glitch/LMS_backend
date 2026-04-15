@@ -14,6 +14,7 @@ import {
     generateUserPassword,
     resetPassword
 } from '../controllers/auth.controller.js'
+import { verifyToken } from '../middleware/verifyToken.js'
 
 const authRouter = express.Router()
 
@@ -31,7 +32,7 @@ authRouter.post("/student_login",loginValidation, studentLogin)
 //common-routes 
 authRouter.post("/forget_password", forgetPassword)
 authRouter.post("/verify_otp", verifyOtp)
-authRouter.post("/logout",logout)
+authRouter.post("/logout",verifyToken, logout)
 
 authRouter.patch("/generate_password", generateUserPassword)
 authRouter.patch("/reset_password", resetPassword)

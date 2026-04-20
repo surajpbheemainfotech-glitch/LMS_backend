@@ -193,10 +193,6 @@ export const enrollStudentInCourse = async (req, res) => {
       [student_id, course_id, amount, "paid", new Date()]
     );
 
-    await db.execute("INSERT INTO course_progress (student_id, course_id, completed_lectures, total_lectures, progress_percentage, last_accessed) VALUES (?, ?, ?, ?, ?, ?)",
-      [student_id, course_id, JSON.stringify([]), course[0].total_lectures, 0, new Date()]
-    );
-
     logger.info({ student_id, course_id }, "Student enrolled in course successfully");
     return success(res, "Enrolled successfully", 201);
 

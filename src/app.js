@@ -38,7 +38,7 @@ app.get("/",(req,res) =>{
   res.send(`Server is running on ${PORT} .`)
 })
 
-console.log("hello")
+console.log("hello2")
 // Routes
 app.use("/api/auth", authRouter)
 app.use("/api/admin", adminRouter);

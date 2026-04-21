@@ -27,7 +27,7 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v2
         with:
           args: >
-            -Dsonar.projectKey=lms-backend
+            -Dsonar.projectKey=surajpbheemainfotech-glitch_LMS_backend
             -Dsonar.organization=surajpbheemainfotech-glitch
             -Dsonar.sources=src
             -Dsonar.branch.name=lms_backend

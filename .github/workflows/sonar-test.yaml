@@ -28,6 +28,7 @@ jobs:
         with:
           args: >
             -Dsonar.projectKey=lms-backend
+            -Dsonar.organization=surajpbheemainfotech-glitch
             -Dsonar.sources=src
             -Dsonar.branch.name=lms_backend
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
